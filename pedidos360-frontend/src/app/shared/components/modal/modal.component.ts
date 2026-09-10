@@ -5,11 +5,19 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   standalone: true,
   template: `
     @if (isOpen) {
-      <div class="modal-overlay" (click)="close.emit()">
+      <div
+        class="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="title"
+        (click)="close.emit()"
+      >
         <div class="modal-box" (click)="$event.stopPropagation()">
           <header>
             <h2>{{ title }}</h2>
-            <button class="close-btn" (click)="close.emit()">✕</button>
+            <button class="close-btn" type="button" aria-label="Cerrar" (click)="close.emit()">
+              ✕
+            </button>
           </header>
 
           <div class="modal-content">
