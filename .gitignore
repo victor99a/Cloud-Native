@@ -1,0 +1,5 @@
+# IntelliJ IDEA (nivel raíz del monorepo)
+.idea/
+
+# macOS
+.DS_Store

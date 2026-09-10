@@ -1,6 +1,11 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HTTP_INTERCEPTORS,
+  provideHttpClient,
+  withInterceptors,
+  withInterceptorsFromDi,
+} from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import {
   MSAL_INSTANCE,
@@ -46,10 +51,11 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
-    provideHttpClient(withInterceptors([MsalInterceptor, httpErrorInterceptor])),
+    provideHttpClient(withInterceptors([httpErrorInterceptor]), withInterceptorsFromDi()),
     { provide: MSAL_INSTANCE, useFactory: msalInstanceFactory },
     { provide: MSAL_GUARD_CONFIG, useFactory: msalGuardConfigFactory },
     { provide: MSAL_INTERCEPTOR_CONFIG, useFactory: msalInterceptorConfigFactory },
+    { provide: HTTP_INTERCEPTORS, useClass: MsalInterceptor, multi: true },
     MsalService,
     MsalGuard,
     MsalBroadcastService,
