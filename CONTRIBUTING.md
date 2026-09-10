@@ -2,6 +2,14 @@
 
 Repositorio: https://github.com/victor99a/Cloud-Native
 
+## Modelo de ramas
+
+- `main` — rama de producción (solo recibe merges desde `develop`).
+- `develop` — rama de integración: aquí se mergean los Pull Requests de cada feature.
+- `feature/*` — una rama por integrante (trabajo individual).
+
+Flujo: **`feature/*` → `develop` → `main`**
+
 ## División del trabajo (3 integrantes)
 
 Cada integrante trabaja en una **rama independiente** y sube sus commits. Las áreas **no se solapan**, por lo que no habrá conflictos de merge.
@@ -30,6 +38,19 @@ Cada integrante trabaja en una **rama independiente** y sube sus commits. Las á
 - `features/pedidos/`, `features/productos/`, `features/dashboard/` (pages, components, services, models, routes)
 - `shared/`: `components/` (button, modal, loader), `material/`, `pipes/`, `directives/`, `utils/`, `constants/`
 
+## Autenticación Azure AD (repartida entre 2 integrantes)
+
+La autenticación con Azure AD tiene **dos mitades que se comunican**:
+
+| Capa | Integrante | Qué hace | Archivos |
+|------|------------|----------|----------|
+| **Frontend** (obtiene el token) | Integrante 2 | Login/logout con MSAL, guarda el token y lo adjunta a cada request (`Authorization: Bearer`) | `core/auth/msal-config.ts`, `auth.service.ts`, `guards/auth.guard.ts`, `interceptors/msal.interceptor.ts`, `app.config.ts` |
+| **Backend** (valida el token) | Integrante 1 | Valida firma / issuer / audience / expiración del JWT y extrae roles | `config/SecurityConfig.java`, `security/JwtAuthenticationConverter.java`, `application.yml` |
+
+**Contrato entre ambos (coordinación obligatoria):**
+- El `scope` que pide el frontend (`api://<API_APP_ID>/access_as_user`) debe coincidir con el `audience` del backend (`spring.security.oauth2.resourceserver.jwt.audiences`).
+- Ambos comparten el mismo `TENANT_ID` y `API_APP_ID`.
+
 ## Flujo de trabajo (Git)
 
 ### Opción A — Colaboradores (recomendada para curso)
@@ -48,7 +69,9 @@ cd Cloud-Native
 git config user.name "Tu Nombre"
 git config user.email "tu@correo.com"
 
-# 3. Crear su rama desde main y cambiar a ella
+# 3. Crear su rama desde develop y cambiar a ella
+git checkout develop
+git pull origin develop
 git checkout -b feature/backend-bff        # (cambiar por su rama)
 
 # 4. Trabajar y commitear
@@ -59,7 +82,7 @@ git commit -m "feat(backend): implementar PedidoController"
 git push -u origin feature/backend-bff
 ```
 
-Luego abrir un **Pull Request** en GitHub (rama → `main`) y mergearlo.
+Luego abrir un **Pull Request** en GitHub (rama → `develop`) y mergearlo.
 
 ### Opción B — Fork + Pull Request (si no hay acceso de colaborador)
 
@@ -75,7 +98,7 @@ git add .
 git commit -m "feat(backend): ..."
 git push -u origin feature/backend-bff
 
-# 4. Abrir Pull Request desde tu fork hacia victor99a/Cloud-Native
+# 4. Abrir Pull Request desde tu fork hacia victor99a/Cloud-Native (rama develop)
 ```
 
 ## Convención de commits
@@ -94,5 +117,6 @@ Ejemplos: `feat(backend)`, `feat(core)`, `feat(ui)`.
 
 1. **No editar** carpetas que no te corresponden (evita conflictos).
 2. Hacer **commits pequeños y frecuentes**.
-3. Antes de mergear, hacer `git pull origin main` en tu rama para estar al día.
+3. Antes de mergear, hacer `git pull origin develop` en tu rama para estar al día.
 4. Cada integrante debe tener **al menos una rama con commits propios** visible en GitHub.
+5. Los Pull Requests se mergean a **`develop`**, no a `main`.
