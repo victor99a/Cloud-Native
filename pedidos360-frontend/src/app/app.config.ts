@@ -1,4 +1,8 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  provideZoneChangeDetection,
+} from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import {
   HTTP_INTERCEPTORS,
@@ -25,6 +29,10 @@ import {
 } from '@azure/msal-browser';
 import { routes } from './app.routes';
 import { msalConfig, protectedResourceMap } from './core/auth/msal-config';
+import { AuthService } from './core/auth/auth.service';
+import { msalInterceptor } from './core/auth/interceptors/msal.interceptor';
+import { authTokenInterceptor } from './core/interceptors/auth-token.interceptor';
+import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { httpErrorInterceptor } from './core/interceptors/http-error.interceptor';
 import { environment } from './environments/environment';
 
@@ -46,12 +54,25 @@ export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
   };
 }
 
+export function msalInitializeFactory(authService: AuthService): () => Promise<void> {
+  return () => authService.initialize();
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
+    {
+      provide: APP_INITIALIZER,
+      useFactory: msalInitializeFactory,
+      deps: [AuthService],
+      multi: true,
+    },
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
-    provideHttpClient(withInterceptors([httpErrorInterceptor]), withInterceptorsFromDi()),
+    provideHttpClient(
+      withInterceptors([msalInterceptor, authTokenInterceptor, loadingInterceptor, httpErrorInterceptor]),
+      withInterceptorsFromDi(),
+    ),
     { provide: MSAL_INSTANCE, useFactory: msalInstanceFactory },
     { provide: MSAL_GUARD_CONFIG, useFactory: msalGuardConfigFactory },
     { provide: MSAL_INTERCEPTOR_CONFIG, useFactory: msalInterceptorConfigFactory },
