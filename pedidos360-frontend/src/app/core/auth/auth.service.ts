@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { AccountInfo, InteractionStatus, SilentRequest } from '@azure/msal-browser';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
@@ -53,6 +53,11 @@ export class AuthService {
   }
 
   async initialize(): Promise<void> {
+    // msal-browser v3 exige inicializar el PublicClientApplication antes de
+    // llamar a cualquier otro método (handleRedirectPromise, loginRedirect,
+    // acquireTokenSilent, etc.). Sin esto, handleRedirectPromise() lanza
+    // "uninitialized_public_client_application" apenas carga la app.
+    await firstValueFrom(this.msalService.initialize());
     await this.msalService.instance.handleRedirectPromise();
     const account = this.account;
     if (account) {

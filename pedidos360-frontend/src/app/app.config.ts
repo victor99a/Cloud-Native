@@ -30,8 +30,6 @@ import {
 import { routes } from './app.routes';
 import { msalConfig, protectedResourceMap } from './core/auth/msal-config';
 import { AuthService } from './core/auth/auth.service';
-import { msalInterceptor } from './core/auth/interceptors/msal.interceptor';
-import { authTokenInterceptor } from './core/interceptors/auth-token.interceptor';
 import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { httpErrorInterceptor } from './core/interceptors/http-error.interceptor';
 import { environment } from './environments/environment';
@@ -70,7 +68,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
     provideHttpClient(
-      withInterceptors([msalInterceptor, authTokenInterceptor, loadingInterceptor, httpErrorInterceptor]),
+      withInterceptors([loadingInterceptor, httpErrorInterceptor]),
       withInterceptorsFromDi(),
     ),
     { provide: MSAL_INSTANCE, useFactory: msalInstanceFactory },
