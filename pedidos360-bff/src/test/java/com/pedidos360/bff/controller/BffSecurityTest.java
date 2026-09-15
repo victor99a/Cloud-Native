@@ -61,6 +61,16 @@ class BffSecurityTest {
     }
 
     @Test
+    void crearPedido_conRolCliente_pasaAutorizacion() throws Exception {
+        // Un CLIENTE sí puede crear pedidos (POST); el proxy sin downstream da 5xx (no 403)
+        mockMvc.perform(post("/api/pedidos")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CLIENTE")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cliente\":\"Cliente X\",\"items\":[{\"productoId\":1,\"cantidad\":2}]}"))
+                .andExpect(status().is5xxServerError());
+    }
+
+    @Test
     void lectura_conRolCliente_pasaAutorizacion() throws Exception {
         // La lectura sí está permitida para cualquier usuario autenticado.
         // Como el BFF es un proxy sin downstream en el test, se espera 5xx (no 401/403).

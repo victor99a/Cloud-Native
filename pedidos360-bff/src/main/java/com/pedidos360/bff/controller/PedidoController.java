@@ -41,7 +41,7 @@ public class PedidoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PedidoResponse> create(@Valid @RequestBody PedidoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(pedidoServiceClient.create(request));
     }
