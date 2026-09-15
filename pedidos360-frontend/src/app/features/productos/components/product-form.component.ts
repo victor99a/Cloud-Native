@@ -1,12 +1,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
-
-export interface ProductoFormValue {
-  nombre: string;
-  precio: number;
-  stock: number;
-}
+import { ProductoRequest } from '../models/producto.model';
 
 @Component({
   selector: 'app-product-form',
@@ -14,6 +9,11 @@ export interface ProductoFormValue {
   imports: [FormsModule, ButtonComponent],
   template: `
     <form (ngSubmit)="onSubmit()">
+      <label>
+        SKU
+        <input type="text" name="sku" [(ngModel)]="sku" required />
+      </label>
+
       <label>
         Nombre
         <input type="text" name="nombre" [(ngModel)]="nombre" required />
@@ -77,18 +77,20 @@ export interface ProductoFormValue {
   `,
 })
 export class ProductFormComponent {
-  @Output() guardar = new EventEmitter<ProductoFormValue>();
+  @Output() guardar = new EventEmitter<ProductoRequest>();
   @Output() cancelar = new EventEmitter<void>();
 
+  sku = '';
   nombre = '';
   precio: number | null = null;
   stock: number | null = null;
 
   onSubmit(): void {
-    if (!this.nombre || this.precio === null || this.stock === null) {
+    if (!this.sku || !this.nombre || this.precio === null || this.stock === null) {
       return;
     }
-    this.guardar.emit({ nombre: this.nombre, precio: this.precio, stock: this.stock });
+    this.guardar.emit({ sku: this.sku, nombre: this.nombre, precio: this.precio, stock: this.stock });
+    this.sku = '';
     this.nombre = '';
     this.precio = null;
     this.stock = null;

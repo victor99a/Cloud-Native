@@ -1,15 +1,24 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { ProductosStoreService } from '../services/productos-store.service';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
-import { ProductFormComponent, ProductoFormValue } from '../components/product-form.component';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
+import { ProductFormComponent } from '../components/product-form.component';
+import { ProductoRequest } from '../models/producto.model';
 
 @Component({
   selector: 'app-productos-list',
   standalone: true,
-  imports: [DecimalPipe, ButtonComponent, ModalComponent, NavbarComponent, ProductFormComponent],
+  imports: [
+    DecimalPipe,
+    ButtonComponent,
+    ModalComponent,
+    NavbarComponent,
+    LoaderComponent,
+    ProductFormComponent,
+  ],
   template: `
     <app-navbar />
 
@@ -17,68 +26,73 @@ import { ProductFormComponent, ProductoFormValue } from '../components/product-f
       <div class="header-row">
         <div>
           <h1>Productos</h1>
-          <p>Datos de ejemplo (todavía no vienen del backend).</p>
+          <p>Datos reales, consumidos desde el API Gateway.</p>
         </div>
         <app-button label="Crear producto" (clicked)="mostrarModal = true" />
       </div>
 
-      @if (productos().length === 0) {
-        <p>No hay productos todavía.</p>
-      } @else {
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Stock</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (producto of productos(); track producto.id) {
+      <app-loader [isLoading]="store.isLoading()" />
+
+      @if (store.error(); as error) {
+        <p class="error">{{ error }}</p>
+      }
+
+      @if (!store.isLoading()) {
+        @if (store.productos().length === 0) {
+          <p>No hay productos todavía.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td>{{ producto.id }}</td>
-                  <td>{{ producto.nombre }}</td>
-                  <td>&#36;{{ producto.precio | number: '1.0-0' }}</td>
-                  <td>
-                    @if (producto.stock > 0) {
-                      <span class="badge disponible">Disponible ({{ producto.stock }})</span>
-                    } @else {
-                      <span class="badge agotado">Agotado</span>
-                    }
-                  </td>
-                  <td class="stock-actions">
-                    <button
-                      class="stock-btn"
-                      type="button"
-                      [attr.aria-label]="'Restar stock a ' + producto.nombre"
-                      (click)="store.ajustarStock(producto.id, -1)"
-                    >
-                      −
-                    </button>
-                    <button
-                      class="stock-btn"
-                      type="button"
-                      [attr.aria-label]="'Sumar stock a ' + producto.nombre"
-                      (click)="store.ajustarStock(producto.id, 1)"
-                    >
-                      +
-                    </button>
-                  </td>
+                  <th>SKU</th>
+                  <th>Nombre</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th></th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                @for (producto of store.productos(); track producto.id) {
+                  <tr>
+                    <td>{{ producto.sku }}</td>
+                    <td>{{ producto.nombre }}</td>
+                    <td>&#36;{{ producto.precio | number: '1.0-0' }}</td>
+                    <td>
+                      @if (producto.stock > 0) {
+                        <span class="badge disponible">Disponible ({{ producto.stock }})</span>
+                      } @else {
+                        <span class="badge agotado">Agotado</span>
+                      }
+                    </td>
+                    <td class="stock-actions">
+                      <button
+                        class="stock-btn"
+                        type="button"
+                        [attr.aria-label]="'Restar stock a ' + producto.nombre"
+                        (click)="store.ajustarStock(producto.id, -1)"
+                      >
+                        −
+                      </button>
+                      <button
+                        class="stock-btn"
+                        type="button"
+                        [attr.aria-label]="'Sumar stock a ' + producto.nombre"
+                        (click)="store.ajustarStock(producto.id, 1)"
+                      >
+                        +
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       }
 
       <app-modal title="Crear producto" [isOpen]="mostrarModal" (close)="mostrarModal = false">
-        <app-product-form
-          (guardar)="crearProducto($event)"
-          (cancelar)="mostrarModal = false"
-        />
+        <app-product-form (guardar)="crearProducto($event)" (cancelar)="mostrarModal = false" />
       </app-modal>
     </section>
   `,
@@ -94,6 +108,9 @@ import { ProductFormComponent, ProductoFormValue } from '../components/product-f
       align-items: flex-start;
       margin-bottom: 12px;
       gap: 16px;
+    }
+    .error {
+      color: #dc2626;
     }
     .table-wrap {
       overflow-x: auto;
@@ -132,14 +149,17 @@ import { ProductFormComponent, ProductoFormValue } from '../components/product-f
     }
   `,
 })
-export class ProductosListComponent {
-  protected readonly store = inject(ProductosStoreService);
+export class ProductosListComponent implements OnInit {
+  readonly store = inject(ProductosStoreService);
 
   mostrarModal = false;
-  productos = this.store.productos;
 
-  crearProducto(valor: ProductoFormValue): void {
-    this.store.crear(valor.nombre, valor.precio, valor.stock);
+  ngOnInit(): void {
+    this.store.cargar();
+  }
+
+  crearProducto(request: ProductoRequest): void {
+    this.store.crear(request);
     this.mostrarModal = false;
   }
 }

@@ -1,37 +1,52 @@
-import { Injectable, signal } from '@angular/core';
-import { EstadoPedido, Pedido } from '../models/pedido.model';
+import { Injectable, inject, signal } from '@angular/core';
+import { ApiService } from '../../../core/services/api.service';
+import { EstadoPedido, Pedido, PedidoRequest } from '../models/pedido.model';
 
-// Orden válido del flujo de estados (Caso 0: no se puede "despachar" sin "aceptar").
+// Orden válido del flujo de estados del backend (pedidos360-pedidos-service).
 const FLUJO_ESTADOS: EstadoPedido[] = [
-  'CREADO',
-  'ACEPTADO',
+  'PENDIENTE',
+  'CONFIRMADO',
   'EN_PREPARACION',
-  'DESPACHADO',
+  'ENVIADO',
   'ENTREGADO',
 ];
 
 @Injectable({ providedIn: 'root' })
 export class PedidosStoreService {
-  // signal() guarda un valor reactivo: cualquier componente que lo lea
-  // se actualiza solo cuando cambia, sin que tengamos que avisarle manualmente.
-  private readonly _pedidos = signal<Pedido[]>([
-    { id: 1, cliente: 'Marco Parra', estado: 'CREADO', total: 12990 },
-    { id: 2, cliente: 'Yerson Herrera', estado: 'ACEPTADO', total: 8500 },
-    { id: 3, cliente: 'Cliente Demo', estado: 'ENTREGADO', total: 21000 },
-  ]);
+  private readonly api = inject(ApiService);
+
+  private readonly _pedidos = signal<Pedido[]>([]);
+  private readonly _isLoading = signal(false);
+  private readonly _error = signal<string | null>(null);
 
   readonly pedidos = this._pedidos.asReadonly();
+  readonly isLoading = this._isLoading.asReadonly();
+  readonly error = this._error.asReadonly();
+
+  cargar(): void {
+    this._isLoading.set(true);
+    this._error.set(null);
+    this.api.get<Pedido[]>('/pedidos').subscribe({
+      next: (pedidos) => {
+        this._pedidos.set(pedidos);
+        this._isLoading.set(false);
+      },
+      error: () => {
+        this._error.set('No se pudieron cargar los pedidos.');
+        this._isLoading.set(false);
+      },
+    });
+  }
 
   findById(id: number): Pedido | undefined {
     return this._pedidos().find((p) => p.id === id);
   }
 
-  crear(cliente: string, total: number): void {
-    const nuevoId = Math.max(0, ...this._pedidos().map((p) => p.id)) + 1;
-    this._pedidos.update((actuales) => [
-      ...actuales,
-      { id: nuevoId, cliente, estado: 'CREADO', total },
-    ]);
+  crear(request: PedidoRequest): void {
+    this.api.post<Pedido>('/pedidos', request).subscribe({
+      next: (nuevo) => this._pedidos.update((actuales) => [...actuales, nuevo]),
+      error: () => this._error.set('No se pudo crear el pedido.'),
+    });
   }
 
   /** Devuelve el siguiente estado válido, o null si ya no hay uno (ENTREGADO/CANCELADO). */
@@ -52,14 +67,20 @@ export class PedidosStoreService {
     if (!siguiente) {
       return;
     }
-    this._pedidos.update((actuales) =>
-      actuales.map((p) => (p.id === id ? { ...p, estado: siguiente } : p)),
-    );
+    this.cambiarEstado(id, siguiente);
   }
 
   cancelar(id: number): void {
-    this._pedidos.update((actuales) =>
-      actuales.map((p) => (p.id === id ? { ...p, estado: 'CANCELADO' as EstadoPedido } : p)),
-    );
+    this.cambiarEstado(id, 'CANCELADO');
+  }
+
+  private cambiarEstado(id: number, estado: EstadoPedido): void {
+    this.api.patch<Pedido>(`/pedidos/${id}/estado`, { estado }).subscribe({
+      next: (actualizado) =>
+        this._pedidos.update((actuales) =>
+          actuales.map((p) => (p.id === id ? actualizado : p)),
+        ),
+      error: () => this._error.set('No se pudo cambiar el estado del pedido.'),
+    });
   }
 }
