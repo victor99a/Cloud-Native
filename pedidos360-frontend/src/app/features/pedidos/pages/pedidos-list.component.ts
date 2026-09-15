@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Pedido } from '../models/pedido.model';
+import { RouterLink } from '@angular/router';
+import { EstadoPedido, Pedido } from '../models/pedido.model';
+import { PedidosStoreService } from '../services/pedidos-store.service';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -14,6 +16,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
   imports: [
     DecimalPipe,
     FormsModule,
+    RouterLink,
     LoaderComponent,
     NavbarComponent,
     ButtonComponent,
@@ -35,8 +38,23 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
       <app-loader [isLoading]="isLoading" />
 
       @if (!isLoading) {
-        @if (pedidos.length === 0) {
-          <p>No hay pedidos todavía.</p>
+        <div class="filters">
+          <input
+            type="text"
+            placeholder="Buscar por cliente..."
+            [(ngModel)]="filtroCliente"
+            name="filtroCliente"
+          />
+          <select [(ngModel)]="filtroEstado" name="filtroEstado">
+            <option value="">Todos los estados</option>
+            @for (estado of estados; track estado) {
+              <option [value]="estado">{{ estado }}</option>
+            }
+          </select>
+        </div>
+
+        @if (pedidosFiltrados().length === 0) {
+          <p>No hay pedidos que coincidan con el filtro.</p>
         } @else {
           <div class="table-wrap">
             <table>
@@ -49,8 +67,8 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
                 </tr>
               </thead>
               <tbody>
-                @for (pedido of pedidos; track pedido.id) {
-                  <tr>
+                @for (pedido of pedidosFiltrados(); track pedido.id) {
+                  <tr [routerLink]="['/pedidos', pedido.id]" class="clickable">
                     <td>{{ pedido.id }}</td>
                     <td>{{ pedido.cliente }}</td>
                     <td><app-order-status-badge [estado]="pedido.estado" /></td>
@@ -76,12 +94,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
           </label>
 
           <div class="form-actions">
-            <app-button
-              label="Cancelar"
-              variant="secondary"
-              type="button"
-              (clicked)="cerrarModal()"
-            />
+            <app-button label="Cancelar" variant="secondary" (clicked)="cerrarModal()" />
             <button type="submit" class="submit-btn">Guardar</button>
           </div>
         </form>
@@ -101,8 +114,26 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
       margin-bottom: 12px;
       gap: 16px;
     }
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .filters input,
+    .filters select {
+      padding: 8px 10px;
+      border: 1px solid #e2e4ec;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .filters input {
+      flex: 1;
+    }
     .table-wrap {
       overflow-x: auto;
+    }
+    tr.clickable {
+      cursor: pointer;
     }
     form {
       display: flex;
@@ -145,17 +176,39 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
   `,
 })
 export class PedidosListComponent implements OnInit {
+  // inject() en vez de "new": así todos los componentes comparten LA MISMA
+  // instancia del servicio (y por lo tanto los mismos datos).
+  private readonly store = inject(PedidosStoreService);
+
   isLoading = true;
   mostrarModal = false;
 
   nuevoCliente = '';
   nuevoTotal: number | null = null;
 
-  pedidos: Pedido[] = [
-    { id: 1, cliente: 'Marco Parra', estado: 'CREADO', total: 12990 },
-    { id: 2, cliente: 'Yerson Herrera', estado: 'ACEPTADO', total: 8500 },
-    { id: 3, cliente: 'Cliente Demo', estado: 'ENTREGADO', total: 21000 },
+  filtroCliente = '';
+  filtroEstado: EstadoPedido | '' = '';
+
+  estados: EstadoPedido[] = [
+    'CREADO',
+    'ACEPTADO',
+    'EN_PREPARACION',
+    'DESPACHADO',
+    'ENTREGADO',
+    'CANCELADO',
   ];
+
+  pedidos = this.store.pedidos;
+
+  pedidosFiltrados(): Pedido[] {
+    const cliente = this.filtroCliente.toLowerCase().trim();
+    const estado = this.filtroEstado;
+    return this.pedidos().filter(
+      (p) =>
+        (!cliente || p.cliente.toLowerCase().includes(cliente)) &&
+        (!estado || p.estado === estado),
+    );
+  }
 
   ngOnInit(): void {
     // Simula la espera de una llamada al backend (más adelante será un HttpClient real).
@@ -168,13 +221,7 @@ export class PedidosListComponent implements OnInit {
     if (!this.nuevoCliente || this.nuevoTotal === null) {
       return;
     }
-
-    const nuevoId = Math.max(0, ...this.pedidos.map((p) => p.id)) + 1;
-    this.pedidos = [
-      ...this.pedidos,
-      { id: nuevoId, cliente: this.nuevoCliente, estado: 'CREADO', total: this.nuevoTotal },
-    ];
-
+    this.store.crear(this.nuevoCliente, this.nuevoTotal);
     this.cerrarModal();
   }
 

@@ -1,10 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
+import { PedidosStoreService } from '../../pedidos/services/pedidos-store.service';
+import { ProductosStoreService } from '../../productos/services/productos-store.service';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [NavbarComponent],
+  imports: [DecimalPipe, NavbarComponent],
   template: `
     <app-navbar />
 
@@ -15,15 +18,15 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
       <div class="cards">
         <div class="card">
           <span class="card-label">Pedidos activos</span>
-          <span class="card-value">3</span>
+          <span class="card-value">{{ pedidosActivos() }}</span>
         </div>
         <div class="card">
           <span class="card-label">Productos en catálogo</span>
-          <span class="card-value">3</span>
+          <span class="card-value">{{ totalProductos() }}</span>
         </div>
         <div class="card">
-          <span class="card-label">Ventas del día</span>
-          <span class="card-value">$42.490</span>
+          <span class="card-label">Ventas entregadas</span>
+          <span class="card-value">&#36;{{ ventasEntregadas() | number: '1.0-0' }}</span>
         </div>
       </div>
     </section>
@@ -60,4 +63,22 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
     }
   `,
 })
-export class DashboardHomeComponent {}
+export class DashboardHomeComponent {
+  private readonly pedidosStore = inject(PedidosStoreService);
+  private readonly productosStore = inject(ProductosStoreService);
+
+  private readonly pedidos = this.pedidosStore.pedidos;
+  private readonly productos = this.productosStore.productos;
+
+  pedidosActivos = computed(
+    () => this.pedidos().filter((p) => p.estado !== 'ENTREGADO' && p.estado !== 'CANCELADO').length,
+  );
+
+  totalProductos = computed(() => this.productos().length);
+
+  ventasEntregadas = computed(() =>
+    this.pedidos()
+      .filter((p) => p.estado === 'ENTREGADO')
+      .reduce((suma, p) => suma + p.total, 0),
+  );
+}

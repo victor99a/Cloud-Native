@@ -1,15 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Producto } from '../models/producto.model';
+import { ProductosStoreService } from '../services/productos-store.service';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
+import { ProductFormComponent, ProductoFormValue } from '../components/product-form.component';
 
 @Component({
   selector: 'app-productos-list',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, ButtonComponent, ModalComponent, NavbarComponent],
+  imports: [DecimalPipe, ButtonComponent, ModalComponent, NavbarComponent, ProductFormComponent],
   template: `
     <app-navbar />
 
@@ -22,7 +22,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
         <app-button label="Crear producto" (clicked)="mostrarModal = true" />
       </div>
 
-      @if (productos.length === 0) {
+      @if (productos().length === 0) {
         <p>No hay productos todavía.</p>
       } @else {
         <div class="table-wrap">
@@ -33,10 +33,11 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                 <th>Nombre</th>
                 <th>Precio</th>
                 <th>Stock</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              @for (producto of productos; track producto.id) {
+              @for (producto of productos(); track producto.id) {
                 <tr>
                   <td>{{ producto.id }}</td>
                   <td>{{ producto.nombre }}</td>
@@ -48,6 +49,24 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       <span class="badge agotado">Agotado</span>
                     }
                   </td>
+                  <td class="stock-actions">
+                    <button
+                      class="stock-btn"
+                      type="button"
+                      [attr.aria-label]="'Restar stock a ' + producto.nombre"
+                      (click)="store.ajustarStock(producto.id, -1)"
+                    >
+                      −
+                    </button>
+                    <button
+                      class="stock-btn"
+                      type="button"
+                      [attr.aria-label]="'Sumar stock a ' + producto.nombre"
+                      (click)="store.ajustarStock(producto.id, 1)"
+                    >
+                      +
+                    </button>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -55,28 +74,11 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
         </div>
       }
 
-      <app-modal title="Crear producto" [isOpen]="mostrarModal" (close)="cerrarModal()">
-        <form (ngSubmit)="crearProducto()">
-          <label>
-            Nombre
-            <input type="text" name="nombre" [(ngModel)]="nuevoNombre" required />
-          </label>
-
-          <label>
-            Precio
-            <input type="number" name="precio" [(ngModel)]="nuevoPrecio" required min="0" />
-          </label>
-
-          <label>
-            Stock
-            <input type="number" name="stock" [(ngModel)]="nuevoStock" required min="0" />
-          </label>
-
-          <div class="form-actions">
-            <app-button label="Cancelar" variant="secondary" (clicked)="cerrarModal()" />
-            <button type="submit" class="submit-btn">Guardar</button>
-          </div>
-        </form>
+      <app-modal title="Crear producto" [isOpen]="mostrarModal" (close)="mostrarModal = false">
+        <app-product-form
+          (guardar)="crearProducto($event)"
+          (cancelar)="mostrarModal = false"
+        />
       </app-modal>
     </section>
   `,
@@ -111,82 +113,33 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
       background: #fee2e2;
       color: #dc2626;
     }
-    form {
+    .stock-actions {
       display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-width: 260px;
+      gap: 6px;
     }
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 13px;
-      color: #6b7086;
-    }
-    input {
-      padding: 8px 10px;
-      border: 1px solid #e2e4ec;
+    .stock-btn {
+      width: 28px;
+      height: 28px;
       border-radius: 6px;
-      font-size: 14px;
-    }
-    .form-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 4px;
-    }
-    .submit-btn {
-      border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: 600;
+      border: 1px solid #e2e4ec;
+      background: white;
       cursor: pointer;
-      background: #4f46e5;
-      color: white;
+      font-size: 14px;
+      line-height: 1;
     }
-    .submit-btn:hover {
-      background: #4338ca;
+    .stock-btn:hover {
+      background: #f4f5f9;
     }
   `,
 })
 export class ProductosListComponent {
+  protected readonly store = inject(ProductosStoreService);
+
   mostrarModal = false;
+  productos = this.store.productos;
 
-  nuevoNombre = '';
-  nuevoPrecio: number | null = null;
-  nuevoStock: number | null = null;
-
-  productos: Producto[] = [
-    { id: 1, nombre: 'Fideos', precio: 2900, stock: 15 },
-    { id: 2, nombre: 'Bebida 1.5L', precio: 1800, stock: 0 },
-    { id: 3, nombre: 'Pan Amasado', precio: 2500, stock: 8 },
-  ];
-
-  crearProducto(): void {
-    if (!this.nuevoNombre || this.nuevoPrecio === null || this.nuevoStock === null) {
-      return;
-    }
-
-    const nuevoId = Math.max(0, ...this.productos.map((p) => p.id)) + 1;
-    this.productos = [
-      ...this.productos,
-      {
-        id: nuevoId,
-        nombre: this.nuevoNombre,
-        precio: this.nuevoPrecio,
-        stock: this.nuevoStock,
-      },
-    ];
-
-    this.cerrarModal();
-  }
-
-  cerrarModal(): void {
+  crearProducto(valor: ProductoFormValue): void {
+    this.store.crear(valor.nombre, valor.precio, valor.stock);
     this.mostrarModal = false;
-    this.nuevoNombre = '';
-    this.nuevoPrecio = null;
-    this.nuevoStock = null;
   }
 }
