@@ -1,8 +1,8 @@
-package com.pedidos360.bff.controller;
+package com.pedidos360.productosservice.controller;
 
-import com.pedidos360.bff.client.ProductoServiceClient;
-import com.pedidos360.bff.dto.request.ProductoRequest;
-import com.pedidos360.bff.dto.response.ProductoResponse;
+import com.pedidos360.productosservice.dto.request.ProductoRequest;
+import com.pedidos360.productosservice.dto.response.ProductoResponse;
+import com.pedidos360.productosservice.service.ProductoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -20,35 +20,35 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/productos")
 public class ProductoController {
 
-    private final ProductoServiceClient productoServiceClient;
+    private final ProductoService productoService;
 
-    public ProductoController(ProductoServiceClient productoServiceClient) {
-        this.productoServiceClient = productoServiceClient;
+    public ProductoController(ProductoService productoService) {
+        this.productoService = productoService;
     }
 
     @GetMapping
     public List<ProductoResponse> findAll() {
-        return productoServiceClient.findAll();
+        return productoService.findAll();
     }
 
     @GetMapping("/{id}")
     public ProductoResponse findById(@PathVariable Long id) {
-        return productoServiceClient.findById(id);
+        return productoService.findById(id);
     }
 
     @PostMapping
     public ResponseEntity<ProductoResponse> create(@Valid @RequestBody ProductoRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productoServiceClient.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(productoService.create(request));
     }
 
     @PutMapping("/{id}")
     public ProductoResponse update(@PathVariable Long id, @Valid @RequestBody ProductoRequest request) {
-        return productoServiceClient.update(id, request);
+        return productoService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        productoServiceClient.delete(id);
+        productoService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

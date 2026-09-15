@@ -9,8 +9,14 @@ import org.springframework.web.client.RestClient;
 public class RestClientConfig {
 
     @Bean
-    public RestClient restClient(RestClient.Builder builder,
-                                 @Value("${downstream.base-url}") String baseUrl) {
+    public RestClient pedidosRestClient(RestClient.Builder builder,
+                                        @Value("${downstream.pedidos.base-url:http://localhost:8081}") String baseUrl) {
+        return builder.baseUrl(baseUrl).build();
+    }
+
+    @Bean
+    public RestClient productosRestClient(RestClient.Builder builder,
+                                          @Value("${downstream.productos.base-url:http://localhost:8082}") String baseUrl) {
         return builder.baseUrl(baseUrl).build();
     }
 }

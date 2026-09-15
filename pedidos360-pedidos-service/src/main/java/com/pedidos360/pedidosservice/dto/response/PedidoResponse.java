@@ -1,6 +1,6 @@
-package com.pedidos360.bff.dto.response;
+package com.pedidos360.pedidosservice.dto.response;
 
-import com.pedidos360.bff.dto.EstadoPedido;
+import com.pedidos360.pedidosservice.entity.EstadoPedido;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;

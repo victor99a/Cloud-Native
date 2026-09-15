@@ -1,9 +1,9 @@
-package com.pedidos360.bff.controller;
+package com.pedidos360.pedidosservice.controller;
 
-import com.pedidos360.bff.client.PedidoServiceClient;
-import com.pedidos360.bff.dto.request.EstadoPedidoRequest;
-import com.pedidos360.bff.dto.request.PedidoRequest;
-import com.pedidos360.bff.dto.response.PedidoResponse;
+import com.pedidos360.pedidosservice.dto.request.EstadoPedidoRequest;
+import com.pedidos360.pedidosservice.dto.request.PedidoRequest;
+import com.pedidos360.pedidosservice.dto.response.PedidoResponse;
+import com.pedidos360.pedidosservice.service.PedidoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -21,35 +21,35 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/pedidos")
 public class PedidoController {
 
-    private final PedidoServiceClient pedidoServiceClient;
+    private final PedidoService pedidoService;
 
-    public PedidoController(PedidoServiceClient pedidoServiceClient) {
-        this.pedidoServiceClient = pedidoServiceClient;
+    public PedidoController(PedidoService pedidoService) {
+        this.pedidoService = pedidoService;
     }
 
     @GetMapping
     public List<PedidoResponse> findAll() {
-        return pedidoServiceClient.findAll();
+        return pedidoService.findAll();
     }
 
     @GetMapping("/{id}")
     public PedidoResponse findById(@PathVariable Long id) {
-        return pedidoServiceClient.findById(id);
+        return pedidoService.findById(id);
     }
 
     @PostMapping
     public ResponseEntity<PedidoResponse> create(@Valid @RequestBody PedidoRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(pedidoServiceClient.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(pedidoService.create(request));
     }
 
     @PatchMapping("/{id}/estado")
     public PedidoResponse updateEstado(@PathVariable Long id, @Valid @RequestBody EstadoPedidoRequest request) {
-        return pedidoServiceClient.updateEstado(id, request);
+        return pedidoService.updateEstado(id, request.estado());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        pedidoServiceClient.delete(id);
+        pedidoService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
