@@ -10,7 +10,7 @@ spring:
         jwt:
           issuer-uri: ${AZURE_ISSUER_URI:https://login.microsoftonline.com/9cc6bdb0-ec1a-463d-a617-94569680e9ed/v2.0}
           audiences:
-            - ${AZURE_AUDIENCE:api://d240ffb6-49ab-4d31-ac14-5c7bb5e24b3d}
+            - ${AZURE_AUDIENCE:d240ffb6-49ab-4d31-ac14-5c7bb5e24b3d}
 
 downstream:
   pedidos:
