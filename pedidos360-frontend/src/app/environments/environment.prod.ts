@@ -2,13 +2,13 @@
 // (EC2 + API Gateway). El audience (API_APP_ID) debe coincidir con el del BFF.
 export const environment = {
   production: true,
-  apiGatewayUrl: 'https://<API_GATEWAY_URL>/api',
+  apiGatewayUrl: 'https://jkvzl52faj.execute-api.us-east-1.amazonaws.com/api',
   azureAd: {
-    tenantId: '<TENANT_ID>',
-    clientId: '<CLIENT_ID>',
-    authority: 'https://login.microsoftonline.com/<TENANT_ID>',
-    redirectUri: 'https://<FRONTEND_DOMAIN>',
-    postLogoutRedirectUri: 'https://<FRONTEND_DOMAIN>',
-    scopes: ['api://<API_APP_ID>/access_as_user'],
+    tenantId: '840f00c4-5744-42d5-8827-ed48c11ff4d4',
+    clientId: 'b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd',
+    authority: 'https://login.microsoftonline.com/840f00c4-5744-42d5-8827-ed48c11ff4d4',
+    redirectUri: 'https://44.194.250.1',
+    postLogoutRedirectUri: 'https://44.194.250.1',
+    scopes: ['api://b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd/access_as_user'],
   },
 };
