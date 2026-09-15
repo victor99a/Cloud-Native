@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pedidos360}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    mem_limit: 200m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pedidos-service:
+    build:
+      context: ../../pedidos360-pedidos-service
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-pedidos360}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports:
+      - "8081:8081"
+    mem_limit: 320m
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  productos-service:
+    build:
+      context: ../../pedidos360-productos-service
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-pedidos360}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports:
+      - "8082:8082"
+    mem_limit: 320m
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bff:
+    build:
+      context: ../../pedidos360-bff
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DOWNSTREAM_PEDIDOS_URL: http://pedidos-service:8081
+      DOWNSTREAM_PRODUCTOS_URL: http://productos-service:8082
+      AZURE_ISSUER_URI: ${AZURE_ISSUER_URI}
+      AZURE_AUDIENCE: ${AZURE_AUDIENCE}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports:
+      - "8080:8080"
+    mem_limit: 320m
+    depends_on:
+      - pedidos-service
+      - productos-service
+
+volumes:
+  postgres-data:

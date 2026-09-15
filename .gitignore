@@ -3,3 +3,6 @@
 
 # macOS
 .DS_Store
+
+# Secretos de despliegue (docker-compose)
+infra/**/.env
