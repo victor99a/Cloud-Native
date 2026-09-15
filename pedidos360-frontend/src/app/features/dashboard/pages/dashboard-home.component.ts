@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { PedidosStoreService } from '../../pedidos/services/pedidos-store.service';
@@ -63,9 +63,14 @@ import { ProductosStoreService } from '../../productos/services/productos-store.
     }
   `,
 })
-export class DashboardHomeComponent {
+export class DashboardHomeComponent implements OnInit {
   private readonly pedidosStore = inject(PedidosStoreService);
   private readonly productosStore = inject(ProductosStoreService);
+
+  ngOnInit(): void {
+    this.pedidosStore.cargar();
+    this.productosStore.cargar();
+  }
 
   private readonly pedidos = this.pedidosStore.pedidos;
   private readonly productos = this.productosStore.productos;
