@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,26 +28,31 @@ public class ProductoController {
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public List<ProductoResponse> findAll() {
         return productoServiceClient.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ProductoResponse findById(@PathVariable Long id) {
         return productoServiceClient.findById(id);
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
     public ResponseEntity<ProductoResponse> create(@Valid @RequestBody ProductoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(productoServiceClient.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
     public ProductoResponse update(@PathVariable Long id, @Valid @RequestBody ProductoRequest request) {
         return productoServiceClient.update(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         productoServiceClient.delete(id);
         return ResponseEntity.noContent().build();
