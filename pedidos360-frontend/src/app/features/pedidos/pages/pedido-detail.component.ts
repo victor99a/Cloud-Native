@@ -26,13 +26,17 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
 
       <app-loader [isLoading]="store.isLoading()" />
 
-      @if (!store.isLoading()) {
+      @if (store.error(); as error) {
+        <div class="error-message" role="alert">{{ error }}</div>
+      }
+
+      @if (!store.isLoading() && !store.error()) {
         @if (pedido(); as pedido) {
-          <div class="card">
+          <div class="card detail-card">
             <div class="card-header">
               <div>
-                <h1>Pedido {{ pedido.numero }}</h1>
-                <p>Cliente: {{ pedido.cliente }}</p>
+                <h1 class="title">Pedido {{ pedido.numero }}</h1>
+                <p class="cliente">Cliente: {{ pedido.cliente }}</p>
               </div>
               <app-order-status-badge [estado]="pedido.estado" />
             </div>
@@ -41,59 +45,78 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
               @for (item of pedido.items; track item.productoId) {
                 <li>
                   <span>{{ item.nombreProducto }} × {{ item.cantidad }}</span>
-                  <span>{{ item.subtotal | number: '1.0-0' }}</span>
+                  <span>&#36;{{ item.subtotal | number: '1.0-0' }}</span>
                 </li>
               }
             </ul>
 
-            <p class="total">Total: {{ pedido.total | number: '1.0-0' }}</p>
+            <p class="total">
+              Total: <strong>&#36;{{ pedido.total | number: '1.0-0' }}</strong>
+            </p>
 
-            @if (siguienteEstado(); as siguiente) {
-              <app-button [label]="'Avanzar a ' + siguiente" (clicked)="avanzar()" />
-            } @else {
-              <p class="info">Este pedido ya llegó a su estado final.</p>
-            }
+            <div class="actions">
+              @if (siguienteEstado(); as siguiente) {
+                <app-button [label]="'Avanzar a ' + siguiente" (clicked)="avanzar()" />
+              } @else {
+                <p class="info">Este pedido ya llegó a su estado final.</p>
+              }
 
-            @if (pedido.estado !== 'ENTREGADO' && pedido.estado !== 'CANCELADO') {
-              <app-button label="Cancelar pedido" variant="secondary" (clicked)="cancelar()" />
-            }
+              @if (pedido.estado !== 'ENTREGADO' && pedido.estado !== 'CANCELADO') {
+                <app-button label="Cancelar pedido" variant="danger" (clicked)="cancelar()" />
+              }
+            </div>
           </div>
         } @else {
-          <p>No se encontró el pedido.</p>
+          <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">🔎</div>
+            <p>No se encontró el pedido.</p>
+          </div>
         }
       }
     </section>
   `,
   styles: `
-    .page {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 0 24px 40px;
-    }
     .back-link {
       display: inline-block;
       margin-bottom: 16px;
-      color: #6b7086;
+      color: var(--color-text-muted);
       text-decoration: none;
       font-size: 14px;
+      font-weight: 500;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition), color var(--transition);
     }
+
     .back-link:hover {
-      color: #1f2333;
+      background: var(--color-surface);
+      color: var(--color-text);
     }
-    .card {
-      background: white;
-      border-radius: 10px;
+
+    .detail-card {
       padding: 24px;
-      box-shadow: 0 1px 3px rgba(15, 15, 35, 0.08);
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
+
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
     }
+
+    .title {
+      margin: 0 0 4px;
+      font-size: clamp(1.25rem, 3vw, 1.5rem);
+    }
+
+    .cliente {
+      margin: 0;
+    }
+
     .items-list {
       list-style: none;
       margin: 0;
@@ -102,22 +125,39 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
       flex-direction: column;
       gap: 6px;
     }
+
     .items-list li {
       display: flex;
       justify-content: space-between;
-      background: #f4f5f9;
-      padding: 8px 12px;
-      border-radius: 6px;
+      gap: 16px;
+      background: var(--color-bg);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
       font-size: 14px;
     }
+
     .total {
       font-size: 20px;
-      font-weight: 700;
       margin: 0;
+      color: var(--color-text);
     }
+
+    .total strong {
+      color: var(--color-primary);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-top: 4px;
+      border-top: 1px solid var(--color-border);
+    }
+
     .info {
-      color: #6b7086;
+      color: var(--color-text-muted);
       margin: 0;
+      align-self: center;
     }
   `,
 })

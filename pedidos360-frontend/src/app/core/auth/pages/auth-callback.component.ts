@@ -1,19 +1,23 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 
 @Component({
   selector: 'app-auth-callback',
   standalone: true,
-  template: `<p class="callback-message">Procesando inicio de sesión...</p>`,
+  imports: [LoaderComponent],
+  template: `
+    <div class="callback">
+      <app-loader [isLoading]="true" label="Procesando inicio de sesión..." />
+    </div>
+  `,
   styles: `
-    .callback-message {
+    .callback {
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      font-family: system-ui, sans-serif;
-      color: #4b5563;
+      min-height: 100vh;
     }
   `,
 })

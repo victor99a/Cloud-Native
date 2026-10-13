@@ -23,23 +23,26 @@ import { ProductoRequest } from '../models/producto.model';
     <app-navbar />
 
     <section class="page">
-      <div class="header-row">
+      <header class="page-header">
         <div>
-          <h1>Productos</h1>
-          <p>Datos reales, consumidos desde el API Gateway.</p>
+          <h1 class="page-title">Productos</h1>
+          <p class="page-subtitle">Administra el catálogo y el stock.</p>
         </div>
         <app-button label="Crear producto" (clicked)="mostrarModal = true" />
-      </div>
+      </header>
 
       <app-loader [isLoading]="store.isLoading()" />
 
       @if (store.error(); as error) {
-        <p class="error">{{ error }}</p>
+        <div class="error-message" role="alert">{{ error }}</div>
       }
 
-      @if (!store.isLoading()) {
+      @if (!store.isLoading() && !store.error()) {
         @if (store.productos().length === 0) {
-          <p>No hay productos todavía.</p>
+          <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">📦</div>
+            <p>No hay productos todavía. Crea el primero.</p>
+          </div>
         } @else {
           <div class="table-wrap">
             <table>
@@ -97,55 +100,51 @@ import { ProductoRequest } from '../models/producto.model';
     </section>
   `,
   styles: `
-    .page {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 0 24px 40px;
-    }
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
-      gap: 16px;
-    }
-    .error {
-      color: #dc2626;
-    }
-    .table-wrap {
-      overflow-x: auto;
-    }
     .badge {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
       font-size: 12px;
       font-weight: 600;
+      white-space: nowrap;
     }
+
     .badge.disponible {
-      background: #dcfce7;
-      color: #16a34a;
+      background: var(--color-success-soft);
+      color: var(--color-success);
     }
+
     .badge.agotado {
-      background: #fee2e2;
-      color: #dc2626;
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
     }
+
     .stock-actions {
       display: flex;
       gap: 6px;
+      justify-content: flex-end;
     }
+
     .stock-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 1px solid #e2e4ec;
-      background: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
       cursor: pointer;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1;
+      color: var(--color-text);
+      transition: background var(--transition);
     }
+
     .stock-btn:hover {
-      background: #f4f5f9;
+      background: var(--color-primary-soft);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
     }
   `,
 })

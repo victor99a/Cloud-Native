@@ -29,6 +29,12 @@ export class AuthService {
     );
   }
 
+  /** Nombre visible del usuario (display name o, en su defecto, el correo). */
+  get userName(): string {
+    const account = this.account;
+    return account?.name ?? account?.username ?? '';
+  }
+
   isAuthenticated(): boolean {
     return this.msalService.instance.getAllAccounts().length > 0;
   }

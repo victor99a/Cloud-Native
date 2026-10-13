@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EstadoPedido, PedidoItemRequest } from '../models/pedido.model';
 import { PedidosStoreService } from '../services/pedidos-store.service';
 import { ProductosStoreService } from '../../productos/services/productos-store.service';
@@ -28,29 +28,30 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
     <app-navbar />
 
     <section class="page">
-      <div class="header-row">
+      <header class="page-header">
         <div>
-          <h1>Pedidos</h1>
-          <p>Datos reales, consumidos desde el API Gateway.</p>
+          <h1 class="page-title">Pedidos</h1>
+          <p class="page-subtitle">Consulta y administra los pedidos.</p>
         </div>
         <app-button label="Crear pedido" (clicked)="abrirModal()" />
-      </div>
+      </header>
 
       <app-loader [isLoading]="store.isLoading()" />
 
       @if (store.error(); as error) {
-        <p class="error">{{ error }}</p>
+        <div class="error-message" role="alert">{{ error }}</div>
       }
 
-      @if (!store.isLoading()) {
+      @if (!store.isLoading() && !store.error()) {
         <div class="filters">
           <input
             type="text"
             placeholder="Buscar por cliente..."
+            aria-label="Buscar por cliente"
             [(ngModel)]="filtroCliente"
             name="filtroCliente"
           />
-          <select [(ngModel)]="filtroEstado" name="filtroEstado">
+          <select [(ngModel)]="filtroEstado" name="filtroEstado" aria-label="Filtrar por estado">
             <option value="">Todos los estados</option>
             @for (estado of estados; track estado) {
               <option [value]="estado">{{ estado }}</option>
@@ -59,7 +60,10 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
         </div>
 
         @if (pedidosFiltrados().length === 0) {
-          <p>No hay pedidos que coincidan con el filtro.</p>
+          <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">🧾</div>
+            <p>No hay pedidos que coincidan con el filtro.</p>
+          </div>
         } @else {
           <div class="table-wrap">
             <table>
@@ -73,11 +77,18 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
               </thead>
               <tbody>
                 @for (pedido of pedidosFiltrados(); track pedido.id) {
-                  <tr [routerLink]="['/pedidos', pedido.id]" class="clickable">
+                  <tr
+                    class="clickable"
+                    tabindex="0"
+                    role="link"
+                    [attr.aria-label]="'Ver pedido ' + pedido.numero"
+                    [routerLink]="['/pedidos', pedido.id]"
+                    (keydown.enter)="irAlPedido(pedido.id)"
+                  >
                     <td>{{ pedido.numero }}</td>
                     <td>{{ pedido.cliente }}</td>
                     <td><app-order-status-badge [estado]="pedido.estado" /></td>
-                    <td>{{ pedido.total | number: '1.0-0' }}</td>
+                    <td>&#36;{{ pedido.total | number: '1.0-0' }}</td>
                   </tr>
                 }
               </tbody>
@@ -90,11 +101,11 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
         <form (ngSubmit)="crearPedido()">
           <label>
             Cliente
-            <input type="text" name="cliente" [(ngModel)]="nuevoCliente" required />
+            <input type="text" name="cliente" [(ngModel)]="nuevoCliente" required placeholder="Nombre del cliente" />
           </label>
 
           <div class="item-picker">
-            <label>
+            <label class="producto">
               Producto
               <select name="productoId" [(ngModel)]="itemProductoId">
                 <option [ngValue]="null">Selecciona...</option>
@@ -107,15 +118,27 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
               Cantidad
               <input type="number" name="cantidad" [(ngModel)]="itemCantidad" min="1" />
             </label>
-            <app-button label="Agregar" variant="secondary" (clicked)="agregarItem()" />
+            <app-button
+              label="Agregar"
+              variant="secondary"
+              [disabled]="!itemProductoId || itemCantidad < 1"
+              (clicked)="agregarItem()"
+            />
           </div>
 
           @if (items.length > 0) {
             <ul class="items-list">
               @for (item of items; track item.productoId; let i = $index) {
                 <li>
-                  {{ nombreProducto(item.productoId) }} × {{ item.cantidad }}
-                  <button type="button" class="remove-btn" (click)="quitarItem(i)">✕</button>
+                  <span>{{ nombreProducto(item.productoId) }} × {{ item.cantidad }}</span>
+                  <button
+                    type="button"
+                    class="remove-btn"
+                    [attr.aria-label]="'Quitar ' + nombreProducto(item.productoId)"
+                    (click)="quitarItem(i)"
+                  >
+                    ✕
+                  </button>
                 </li>
               }
             </ul>
@@ -125,82 +148,63 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
 
           <div class="form-actions">
             <app-button label="Cancelar" variant="secondary" (clicked)="cerrarModal()" />
-            <button type="submit" class="submit-btn" [disabled]="!nuevoCliente || items.length === 0">
-              Guardar
-            </button>
+            <app-button
+              label="Guardar"
+              type="submit"
+              [disabled]="!nuevoCliente.trim() || items.length === 0"
+            />
           </div>
         </form>
       </app-modal>
     </section>
   `,
   styles: `
-    .page {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 0 24px 40px;
-    }
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
-      gap: 16px;
-    }
-    .error {
-      color: #dc2626;
-    }
     .filters {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       margin-bottom: 16px;
     }
-    .filters input,
-    .filters select {
-      padding: 8px 10px;
-      border: 1px solid #e2e4ec;
-      border-radius: 6px;
-      font-size: 14px;
-    }
+
     .filters input {
-      flex: 1;
+      flex: 1 1 200px;
     }
-    .table-wrap {
-      overflow-x: auto;
+
+    .filters select {
+      flex: 0 1 auto;
+      min-width: 180px;
     }
+
     tr.clickable {
       cursor: pointer;
     }
+
+    tr.clickable:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -2px;
+    }
+
     form {
       display: flex;
       flex-direction: column;
       gap: 14px;
-      min-width: 300px;
     }
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 13px;
-      color: #6b7086;
-    }
-    input,
-    select {
-      padding: 8px 10px;
-      border: 1px solid #e2e4ec;
-      border-radius: 6px;
-      font-size: 14px;
-    }
+
     .item-picker {
       display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
       align-items: flex-end;
-      gap: 8px;
     }
-    .item-picker select {
-      min-width: 160px;
+
+    .item-picker .producto {
+      flex: 1 1 180px;
     }
-    .cantidad input {
-      width: 70px;
+
+    .item-picker .cantidad {
+      flex: 0 0 90px;
     }
+
     .items-list {
       list-style: none;
       margin: 0;
@@ -209,54 +213,55 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
       flex-direction: column;
       gap: 6px;
     }
+
     .items-list li {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #f4f5f9;
-      padding: 6px 10px;
-      border-radius: 6px;
+      gap: 12px;
+      background: var(--color-bg);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
       font-size: 14px;
     }
+
     .remove-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
       border: none;
       background: transparent;
       cursor: pointer;
-      color: #dc2626;
+      color: var(--color-danger);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
     }
+
+    .remove-btn:hover {
+      background: var(--color-danger-soft);
+    }
+
     .hint {
-      color: #6b7086;
+      color: var(--color-text-muted);
       font-size: 13px;
       margin: 0;
     }
+
     .form-actions {
       display: flex;
       justify-content: flex-end;
+      flex-wrap: wrap;
       gap: 8px;
       margin-top: 4px;
-    }
-    .submit-btn {
-      border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      background: #4f46e5;
-      color: white;
-    }
-    .submit-btn:hover:not(:disabled) {
-      background: #4338ca;
-    }
-    .submit-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
   `,
 })
 export class PedidosListComponent implements OnInit {
   readonly store = inject(PedidosStoreService);
   readonly productosStore = inject(ProductosStoreService);
+  private readonly router = inject(Router);
 
   mostrarModal = false;
 
@@ -291,6 +296,10 @@ export class PedidosListComponent implements OnInit {
     return this.productosStore.productos().find((p) => p.id === productoId)?.nombre ?? '—';
   }
 
+  irAlPedido(id: number): void {
+    this.router.navigate(['/pedidos', id]);
+  }
+
   agregarItem(): void {
     if (!this.itemProductoId || this.itemCantidad < 1) {
       return;
@@ -309,10 +318,10 @@ export class PedidosListComponent implements OnInit {
   }
 
   crearPedido(): void {
-    if (!this.nuevoCliente || this.items.length === 0) {
+    if (!this.nuevoCliente.trim() || this.items.length === 0) {
       return;
     }
-    this.store.crear({ cliente: this.nuevoCliente, items: this.items });
+    this.store.crear({ cliente: this.nuevoCliente.trim(), items: this.items });
     this.cerrarModal();
   }
 
