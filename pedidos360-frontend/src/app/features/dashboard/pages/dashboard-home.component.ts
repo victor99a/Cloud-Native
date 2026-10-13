@@ -1,79 +1,110 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
+import { AuthService } from '../../../core/auth/auth.service';
 import { PedidosStoreService } from '../../pedidos/services/pedidos-store.service';
 import { ProductosStoreService } from '../../productos/services/productos-store.service';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [DecimalPipe, NavbarComponent],
+  imports: [DecimalPipe, NavbarComponent, LoaderComponent],
   template: `
     <app-navbar />
 
     <section class="page">
-      <h1>Pedidos360</h1>
-      <p>Resumen general (placeholder). Aquí irá el resumen según el rol del usuario.</p>
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Hola, {{ nombre() }}</h1>
+          <p class="page-subtitle">Resumen general de Pedidos360.</p>
+        </div>
+      </header>
 
-      <div class="cards">
-        <div class="card">
-          <span class="card-label">Pedidos activos</span>
-          <span class="card-value">{{ pedidosActivos() }}</span>
+      <app-loader [isLoading]="cargando()" />
+
+      @if (error(); as err) {
+        <div class="error-message" role="alert">{{ err }}</div>
+      }
+
+      @if (!cargando()) {
+        <div class="cards">
+          <div class="card stat-card">
+            <span class="stat-icon" aria-hidden="true">📋</span>
+            <span class="card-label">Pedidos activos</span>
+            <span class="card-value">{{ pedidosActivos() }}</span>
+          </div>
+
+          <div class="card stat-card">
+            <span class="stat-icon" aria-hidden="true">📦</span>
+            <span class="card-label">Productos en catálogo</span>
+            <span class="card-value">{{ totalProductos() }}</span>
+          </div>
+
+          <div class="card stat-card">
+            <span class="stat-icon" aria-hidden="true">💰</span>
+            <span class="card-label">Ventas entregadas</span>
+            <span class="card-value">&#36;{{ ventasEntregadas() | number: '1.0-0' }}</span>
+          </div>
         </div>
-        <div class="card">
-          <span class="card-label">Productos en catálogo</span>
-          <span class="card-value">{{ totalProductos() }}</span>
-        </div>
-        <div class="card">
-          <span class="card-label">Ventas entregadas</span>
-          <span class="card-value">&#36;{{ ventasEntregadas() | number: '1.0-0' }}</span>
-        </div>
-      </div>
+      }
     </section>
   `,
   styles: `
-    .page {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 0 24px 40px;
-    }
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
-      margin-top: 20px;
+      margin-top: 8px;
     }
-    .card {
-      background: white;
-      border-radius: 10px;
+
+    .stat-card {
       padding: 20px;
-      box-shadow: 0 1px 3px rgba(15, 15, 35, 0.08);
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
+
+    .stat-icon {
+      font-size: 24px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
     .card-label {
       font-size: 13px;
-      color: #6b7086;
+      color: var(--color-text-muted);
     }
+
     .card-value {
-      font-size: 28px;
+      font-size: clamp(24px, 4vw, 30px);
       font-weight: 700;
-      color: #1f2333;
+      color: var(--color-text);
     }
   `,
 })
 export class DashboardHomeComponent implements OnInit {
+  private readonly authService = inject(AuthService);
   private readonly pedidosStore = inject(PedidosStoreService);
   private readonly productosStore = inject(ProductosStoreService);
+
+  private readonly pedidos = this.pedidosStore.pedidos;
+  private readonly productos = this.productosStore.productos;
 
   ngOnInit(): void {
     this.pedidosStore.cargar();
     this.productosStore.cargar();
   }
 
-  private readonly pedidos = this.pedidosStore.pedidos;
-  private readonly productos = this.productosStore.productos;
+  nombre(): string {
+    return this.authService.userName || 'usuario';
+  }
+
+  cargando = computed(
+    () => this.pedidosStore.isLoading() || this.productosStore.isLoading(),
+  );
+
+  error = computed(() => this.pedidosStore.error() ?? this.productosStore.error());
 
   pedidosActivos = computed(
     () => this.pedidos().filter((p) => p.estado !== 'ENTREGADO' && p.estado !== 'CANCELADO').length,

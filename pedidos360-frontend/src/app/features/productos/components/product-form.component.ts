@@ -11,27 +11,44 @@ import { ProductoRequest } from '../models/producto.model';
     <form (ngSubmit)="onSubmit()">
       <label>
         SKU
-        <input type="text" name="sku" [(ngModel)]="sku" required />
+        <input type="text" name="sku" [(ngModel)]="sku" required placeholder="PROD-001" />
       </label>
 
       <label>
         Nombre
-        <input type="text" name="nombre" [(ngModel)]="nombre" required />
+        <input type="text" name="nombre" [(ngModel)]="nombre" required placeholder="Nombre del producto" />
       </label>
 
       <label>
-        Precio
-        <input type="number" name="precio" [(ngModel)]="precio" required min="0" />
+        Descripción (opcional)
+        <textarea
+          name="descripcion"
+          rows="2"
+          [(ngModel)]="descripcion"
+          placeholder="Breve descripción del producto"
+        ></textarea>
       </label>
 
-      <label>
-        Stock
-        <input type="number" name="stock" [(ngModel)]="stock" required min="0" />
+      <div class="row">
+        <label>
+          Precio
+          <input type="number" name="precio" [(ngModel)]="precio" required min="0" step="0.01" />
+        </label>
+
+        <label>
+          Stock
+          <input type="number" name="stock" [(ngModel)]="stock" required min="0" step="1" />
+        </label>
+      </div>
+
+      <label class="checkbox">
+        <input type="checkbox" name="activo" [(ngModel)]="activo" />
+        Producto activo
       </label>
 
       <div class="form-actions">
         <app-button label="Cancelar" variant="secondary" (clicked)="cancelar.emit()" />
-        <button type="submit" class="submit-btn">Guardar</button>
+        <app-button label="Guardar" type="submit" [disabled]="!formValido()" />
       </div>
     </form>
   `,
@@ -40,39 +57,41 @@ import { ProductoRequest } from '../models/producto.model';
       display: flex;
       flex-direction: column;
       gap: 14px;
-      min-width: 260px;
     }
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 13px;
-      color: #6b7086;
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
-    input {
-      padding: 8px 10px;
-      border: 1px solid #e2e4ec;
-      border-radius: 6px;
+
+    .checkbox {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
       font-size: 14px;
+      color: var(--color-text);
+      cursor: pointer;
     }
+
+    .checkbox input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--color-primary);
+    }
+
     .form-actions {
       display: flex;
       justify-content: flex-end;
+      flex-wrap: wrap;
       gap: 8px;
       margin-top: 4px;
     }
-    .submit-btn {
-      border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      background: #4f46e5;
-      color: white;
-    }
-    .submit-btn:hover {
-      background: #4338ca;
+
+    @media (max-width: 480px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
     }
   `,
 })
@@ -82,17 +101,32 @@ export class ProductFormComponent {
 
   sku = '';
   nombre = '';
+  descripcion = '';
   precio: number | null = null;
   stock: number | null = null;
+  activo = true;
+
+  formValido(): boolean {
+    return this.sku.trim().length > 0 && this.nombre.trim().length > 0 && this.precio !== null && this.stock !== null;
+  }
 
   onSubmit(): void {
-    if (!this.sku || !this.nombre || this.precio === null || this.stock === null) {
+    if (!this.formValido()) {
       return;
     }
-    this.guardar.emit({ sku: this.sku, nombre: this.nombre, precio: this.precio, stock: this.stock });
+    this.guardar.emit({
+      sku: this.sku.trim(),
+      nombre: this.nombre.trim(),
+      descripcion: this.descripcion.trim() || undefined,
+      precio: this.precio as number,
+      stock: this.stock as number,
+      activo: this.activo,
+    });
     this.sku = '';
     this.nombre = '';
+    this.descripcion = '';
     this.precio = null;
     this.stock = null;
+    this.activo = true;
   }
 }

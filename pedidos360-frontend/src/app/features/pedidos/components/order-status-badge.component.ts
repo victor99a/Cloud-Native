@@ -4,24 +4,48 @@ import { EstadoPedido } from '../models/pedido.model';
 @Component({
   selector: 'app-order-status-badge',
   standalone: true,
-  template: ` <span [class]="'badge ' + estado.toLowerCase()">{{ estado }}</span> `,
+  template: ` <span [class]="'badge estado-' + estado.toLowerCase()">{{ estado }}</span> `,
   styles: `
     .badge {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
       font-size: 12px;
       font-weight: 600;
-      background: #eef2ff;
-      color: #4f46e5;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
     }
-    .badge.entregado {
-      background: #dcfce7;
-      color: #16a34a;
+
+    .badge.estado-pendiente {
+      background: var(--color-warning-soft);
+      color: var(--color-warning);
     }
-    .badge.cancelado {
-      background: #fee2e2;
-      color: #dc2626;
+
+    .badge.estado-confirmado {
+      background: var(--color-info-soft);
+      color: var(--color-info);
+    }
+
+    .badge.estado-en_preparacion {
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+    }
+
+    .badge.estado-enviado {
+      background: var(--color-teal-soft);
+      color: var(--color-teal);
+    }
+
+    .badge.estado-entregado {
+      background: var(--color-success-soft);
+      color: var(--color-success);
+    }
+
+    .badge.estado-cancelado {
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
     }
   `,
 })
