@@ -7,6 +7,7 @@ import com.pedidos360.pedidosservice.entity.Pedido;
 import com.pedidos360.pedidosservice.entity.PedidoItem;
 import com.pedidos360.pedidosservice.entity.Producto;
 import com.pedidos360.pedidosservice.exception.ResourceNotFoundException;
+import com.pedidos360.pedidosservice.messaging.PedidoEventPublisher;
 import com.pedidos360.pedidosservice.repository.PedidoRepository;
 import com.pedidos360.pedidosservice.repository.ProductoRepository;
 import com.pedidos360.pedidosservice.service.PedidoService;
@@ -21,10 +22,15 @@ public class PedidoServiceImpl implements PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final ProductoRepository productoRepository;
+    private final PedidoEventPublisher eventPublisher;
 
-    public PedidoServiceImpl(PedidoRepository pedidoRepository, ProductoRepository productoRepository) {
+    public PedidoServiceImpl(
+            PedidoRepository pedidoRepository,
+            ProductoRepository productoRepository,
+            PedidoEventPublisher eventPublisher) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -69,7 +75,9 @@ public class PedidoServiceImpl implements PedidoService {
         }
 
         pedido.recalculateTotal();
-        return toResponse(pedidoRepository.save(pedido));
+        PedidoResponse response = toResponse(pedidoRepository.save(pedido));
+        eventPublisher.publishPedidoCreado(response);
+        return response;
     }
 
     @Override
@@ -77,7 +85,9 @@ public class PedidoServiceImpl implements PedidoService {
     public PedidoResponse updateEstado(Long id, EstadoPedido estado) {
         Pedido pedido = findEntity(id);
         pedido.setEstado(estado);
-        return toResponse(pedidoRepository.save(pedido));
+        PedidoResponse response = toResponse(pedidoRepository.save(pedido));
+        eventPublisher.publishEstadoCambiado(response);
+        return response;
     }
 
     @Override

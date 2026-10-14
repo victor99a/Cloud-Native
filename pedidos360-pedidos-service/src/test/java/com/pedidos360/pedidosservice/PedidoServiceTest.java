@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pedidos360.pedidosservice.dto.request.PedidoRequest;
 import com.pedidos360.pedidosservice.entity.Producto;
+import com.pedidos360.pedidosservice.messaging.PedidoEventPublisher;
 import com.pedidos360.pedidosservice.repository.ProductoRepository;
 import java.math.BigDecimal;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +35,9 @@ class PedidoServiceTest {
 
     @Autowired
     private ProductoRepository productoRepository;
+
+    @MockBean
+    private PedidoEventPublisher eventPublisher;
 
     @Test
     void createConDosItems_calculaSubtotalYTotal() throws Exception {
