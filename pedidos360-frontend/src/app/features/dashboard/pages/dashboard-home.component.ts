@@ -30,19 +30,19 @@ import { ProductosStoreService } from '../../productos/services/productos-store.
       @if (!cargando()) {
         <div class="cards">
           <div class="card stat-card">
-            <span class="stat-icon" aria-hidden="true">📋</span>
+            <span class="stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
             <span class="card-label">Pedidos activos</span>
             <span class="card-value">{{ pedidosActivos() }}</span>
           </div>
 
           <div class="card stat-card">
-            <span class="stat-icon" aria-hidden="true">📦</span>
+            <span class="stat-icon material-symbols-outlined" aria-hidden="true">inventory_2</span>
             <span class="card-label">Productos en catálogo</span>
             <span class="card-value">{{ totalProductos() }}</span>
           </div>
 
           <div class="card stat-card">
-            <span class="stat-icon" aria-hidden="true">💰</span>
+            <span class="stat-icon material-symbols-outlined" aria-hidden="true">payments</span>
             <span class="card-label">Ventas entregadas</span>
             <span class="card-value">&#36;{{ ventasEntregadas() | number: '1.0-0' }}</span>
           </div>

@@ -68,7 +68,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
           </div>
         } @else {
           <div class="empty-state">
-            <div class="empty-icon" aria-hidden="true">🔎</div>
+            <div class="empty-icon material-symbols-outlined" aria-hidden="true">search</div>
             <p>No se encontró el pedido.</p>
           </div>
         }

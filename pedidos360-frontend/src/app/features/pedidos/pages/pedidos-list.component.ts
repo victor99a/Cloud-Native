@@ -61,7 +61,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
 
         @if (pedidosFiltrados().length === 0) {
           <div class="empty-state">
-            <div class="empty-icon" aria-hidden="true">🧾</div>
+            <div class="empty-icon material-symbols-outlined" aria-hidden="true">receipt_long</div>
             <p>No hay pedidos que coincidan con el filtro.</p>
           </div>
         } @else {

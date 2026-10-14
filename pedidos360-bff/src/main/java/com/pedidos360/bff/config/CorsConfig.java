@@ -13,8 +13,9 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // TODO: mover origen a una propiedad (p. ej. app.cors.allowed-origins) para prod
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        // Se permiten todos los orígenes porque el frontend se despliega en EC2 con IP
+        // efímera (lab). En un entorno estable, restringir a dominios concretos.
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

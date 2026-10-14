@@ -152,7 +152,7 @@ export SPRING_PROFILES_ACTIVE=dev
 export DB_HOST=localhost DB_PORT=5432 DB_NAME=pedidos360 DB_USERNAME=postgres DB_PASSWORD=postgres
 export RABBITMQ_HOST=localhost RABBITMQ_PORT=5672 RABBITMQ_USERNAME=guest RABBITMQ_PASSWORD=guest
 export AZURE_ISSUER_URI="https://login.microsoftonline.com/840f00c4-5744-42d5-8827-ed48c11ff4d4/v2.0"
-export AZURE_AUDIENCE="api://b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd"
+export AZURE_AUDIENCE="b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd"
 export DOWNSTREAM_PEDIDOS_URL="http://localhost:8081"
 export DOWNSTREAM_PRODUCTOS_URL="http://localhost:8082"
 nohup java -jar app/pedidos.jar  > logs/pedidos.log  2>&1 &
@@ -178,7 +178,7 @@ sudo systemctl restart nginx
 
 ```powershell
 $apiId = aws apigatewayv2 create-api --name pedidos360-api --protocol-type HTTP --query 'ApiId' --output text
-$authId = aws apigatewayv2 create-authorizer --api-id $apiId --name azure-ad-jwt --authorizer-type JWT --identity-source '$request.header.Authorization' --jwt-configuration 'Issuer=https://login.microsoftonline.com/840f00c4-5744-42d5-8827-ed48c11ff4d4/v2.0,Audience=api://b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd' --query 'AuthorizerId' --output text
+$authId = aws apigatewayv2 create-authorizer --api-id $apiId --name azure-ad-jwt --authorizer-type JWT --identity-source '$request.header.Authorization' --jwt-configuration 'Issuer=https://login.microsoftonline.com/840f00c4-5744-42d5-8827-ed48c11ff4d4/v2.0,Audience=b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd' --query 'AuthorizerId' --output text
 $intId = aws apigatewayv2 create-integration --api-id $apiId --integration-type HTTP_PROXY --integration-method ANY --integration-uri "http://<IP>:8080/api/{proxy}" --payload-format-version 1.0 --query 'IntegrationId' --output text
 aws apigatewayv2 create-route --api-id $apiId --route-key 'ANY /api/{proxy+}' --target "integrations/$intId" --authorization-type JWT --authorizer-id $authId
 aws apigatewayv2 create-stage --api-id $apiId --stage-name '$default' --auto-deploy
@@ -196,6 +196,14 @@ aws apigatewayv2 create-stage --api-id $apiId --stage-name '$default' --auto-dep
 
 ## 5. IP elástica (para que la IP no cambie entre reinicios)
 
+### ⚠️ ¿La IP cambia al detener/reiniciar el taller?
+
+**Sí — por defecto la IP pública CAMBIA.** Al detener e iniciar la instancia (o reiniciar el lab), la IP pública autoasignada se libera y se asigna una nueva. Si pasa, hay que actualizar: el redirect URI en Azure AD, la integración del API Gateway, `environment.prod.ts` y el certificado de nginx.
+
+**Para que NO cambie, usa una IP elástica** (abajo). Con la EIP asociada, la IP se mantiene al detener/iniciar la instancia.
+
+### Cómo asignar la IP elástica
+
 ```powershell
 # 1) Asignar una IP elástica (devuelve AllocationId)
 aws ec2 allocate-address --domain vpc --region us-east-1
@@ -204,12 +212,35 @@ aws ec2 allocate-address --domain vpc --region us-east-1
 aws ec2 associate-address --instance-id i-XXXXXXXX --allocation-id eipalloc-XXXXXXXX --region us-east-1
 ```
 
-**Caveat:** la IP elástica evita que la IP cambie si la **instancia se detiene/inicia** (no se termina). Pero si el **lab se reinicia y elimina la instancia**, igual hay que reasociar la EIP a la nueva instancia (la EIP asignada suele conservarse en la cuenta durante el lab). En la práctica, lo más seguro es repetir el runbook de la sección 4 y actualizar las URLs/redirect URI.
+**Caveat:** la EIP evita el cambio de IP si la instancia se **detiene/inicia** (no se termina). Pero si el **lab se reinicia por completo y termina la instancia**, habrá que lanzar una nueva y **reasociar** la EIP (la asignación suele conservarse en la cuenta durante el lab, pero no es garantía). Ante un reinicio total: repetir el runbook de la sección 4 y reasociar la EIP si existe.
 
 ---
 
-## 6. Pendientes / recordatorios
+## 6. Estado de los pendientes (actualizado)
 
-- **Redirect URI en Azure AD** (`https://54.90.116.232`): pendiente de registrar por el administrador.
-- Tras el login, **verificar el claim `aud`** del token (jwt.ms) contra el `audience` del Gateway/BFF (`api://b4a1d505-...`).
-- Los archivos `environment.ts`/`environment.prod.ts` son **específicos del lab**: no versionar las IPs temporales.
+- ✅ **Redirect URI en Azure AD** (`https://54.90.116.232`): registrado.
+- ✅ **Claim `aud`**: verificado — el token trae `aud = b4a1d505-...` (SIN prefijo `api://`); el Gateway y el BFF ya usan ese valor.
+- ✅ **CORS**: configurado en el API Gateway (ruta OPTIONS sin autorizador) + `CorsConfig` del BFF permite cualquier origen.
+- ✅ **Puertos de servicios cerrados** (8081-8084, 5672): solo quedan abiertos 22, 80, 443, 8080 y 15672.
+- ⚠️ Los archivos `environment.ts`/`environment.prod.ts` son específicos del lab: **no versionar** las IPs temporales.
+
+---
+
+## 7. Guion de demostración EP4 (11 puntos, 5-10 min)
+
+1. **API Manager en la nube** — AWS Console → API Gateway → mostrar la HTTP API **`pedidos360-api`** (id `7vnpy8md20`) activa. URL base: `https://7vnpy8md20.execute-api.us-east-1.amazonaws.com`.
+2. **Configuración de endpoints** — En el API Gateway: ruta `ANY /api/{proxy+}` → integración HTTP_PROXY → `http://54.90.116.232:8080/api/{proxy}`; y el autorizador **`azure-ad-jwt`** (JWT, issuer de Azure AD).
+3. **Frontend consume vía API Manager** — DevTools → Network → recargar → mostrar que las peticiones van a `https://7vnpy8md20.execute-api...` (nunca a IPs directas de los servicios).
+4. **Validación JWT (200 vs 401)** —
+   ```powershell
+   # Sin token -> 401
+   curl -s -o /dev/null -w "%{http_code}" https://7vnpy8md20.execute-api.us-east-1.amazonaws.com/api/pedidos
+   # Con token válido (app logueada) -> 200
+   ```
+5. **IDaaS tenant + usuarios** — Azure Portal → Microsoft Entra ID → tenant `840f00c4...`, app **Pedidos360**, y **Users** (cuenta con rol `ADMIN`).
+6. **Login OAuth2/OIDC en vivo** — `https://54.90.116.232` → "Iniciar sesión con Microsoft" → redirección a Microsoft → vuelta con JWT (DevTools → Application → Local Storage → caché MSAL).
+7. **Despliegue backend/frontend** — mostrar la EC2 `54.90.116.232` y la integración frontend → Gateway → BFF → servicios.
+8. **Clúster RabbitMQ (2 nodos)** — `http://54.90.116.232:15672` (guest/guest) → **Overview** → 2 nodos: `rabbit@rabbitmq1` + `rabbit@rabbitmq2`.
+9. **3 colas + 3 DLQs + fallo** — pestaña **Queues** → `notificaciones`, `tickets`, `documentos` + sus `.dlq`. Forzar un fallo (mensaje vacío) → aparece en `notificaciones.dlq`.
+10. **Exchanges direct y topic** — pestaña **Exchanges** → `pedidos360.direct` (direct) y `pedidos360.topic` (topic).
+11. **docker-compose** — por SSH en la EC2: `cd ~/deploy && docker-compose ps` → postgres + `rabbitmq1` + `rabbitmq2` corriendo vía docker-compose.
