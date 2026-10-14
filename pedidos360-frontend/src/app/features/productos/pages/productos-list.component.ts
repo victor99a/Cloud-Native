@@ -40,7 +40,7 @@ import { ProductoRequest } from '../models/producto.model';
       @if (!store.isLoading() && !store.error()) {
         @if (store.productos().length === 0) {
           <div class="empty-state">
-            <div class="empty-icon" aria-hidden="true">📦</div>
+            <div class="empty-icon material-symbols-outlined" aria-hidden="true">inventory_2</div>
             <p>No hay productos todavía. Crea el primero.</p>
           </div>
         } @else {
