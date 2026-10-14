@@ -122,7 +122,7 @@ a {
 .page {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0 clamp(16px, 4vw, 24px) 48px;
+  padding: 24px clamp(16px, 4vw, 24px) 56px;
 }
 
 /* Encabezado de página: título + acción. Se apila en móvil. */
@@ -255,9 +255,17 @@ tbody tr:hover {
 }
 
 .empty-state .empty-icon {
-  font-size: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 36px;
   line-height: 1;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .empty-state p {

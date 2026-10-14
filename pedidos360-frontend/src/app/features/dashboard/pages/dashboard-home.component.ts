@@ -30,19 +30,19 @@ import { ProductosStoreService } from '../../productos/services/productos-store.
       @if (!cargando()) {
         <div class="cards">
           <div class="card stat-card">
-            <span class="stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
+            <span class="stat-icon stat-icon--orders material-symbols-outlined" aria-hidden="true">assignment</span>
             <span class="card-label">Pedidos activos</span>
             <span class="card-value">{{ pedidosActivos() }}</span>
           </div>
 
           <div class="card stat-card">
-            <span class="stat-icon material-symbols-outlined" aria-hidden="true">inventory_2</span>
+            <span class="stat-icon stat-icon--products material-symbols-outlined" aria-hidden="true">inventory_2</span>
             <span class="card-label">Productos en catálogo</span>
             <span class="card-value">{{ totalProductos() }}</span>
           </div>
 
           <div class="card stat-card">
-            <span class="stat-icon material-symbols-outlined" aria-hidden="true">payments</span>
+            <span class="stat-icon stat-icon--sales material-symbols-outlined" aria-hidden="true">payments</span>
             <span class="card-label">Ventas entregadas</span>
             <span class="card-value">&#36;{{ ventasEntregadas() | number: '1.0-0' }}</span>
           </div>
@@ -53,26 +53,55 @@ import { ProductosStoreService } from '../../productos/services/productos-store.
   styles: `
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
       margin-top: 8px;
     }
 
     .stat-card {
-      padding: 20px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 10px;
+      transition:
+        transform var(--transition),
+        box-shadow var(--transition);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
 
     .stat-icon {
-      font-size: 24px;
-      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      font-size: 22px;
       margin-bottom: 6px;
+    }
+
+    .stat-icon--orders {
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+    }
+
+    .stat-icon--products {
+      background: var(--color-teal-soft);
+      color: var(--color-teal);
+    }
+
+    .stat-icon--sales {
+      background: var(--color-success-soft);
+      color: var(--color-success);
     }
 
     .card-label {
       font-size: 13px;
+      font-weight: 500;
       color: var(--color-text-muted);
     }
 
@@ -80,6 +109,7 @@ import { ProductosStoreService } from '../../productos/services/productos-store.
       font-size: clamp(24px, 4vw, 30px);
       font-weight: 700;
       color: var(--color-text);
+      letter-spacing: -0.02em;
     }
   `,
 })

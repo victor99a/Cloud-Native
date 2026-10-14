@@ -244,3 +244,56 @@ aws ec2 associate-address --instance-id i-XXXXXXXX --allocation-id eipalloc-XXXX
 9. **3 colas + 3 DLQs + fallo** — pestaña **Queues** → `notificaciones`, `tickets`, `documentos` + sus `.dlq`. Forzar un fallo (mensaje vacío) → aparece en `notificaciones.dlq`.
 10. **Exchanges direct y topic** — pestaña **Exchanges** → `pedidos360.direct` (direct) y `pedidos360.topic` (topic).
 11. **docker-compose** — por SSH en la EC2: `cd ~/deploy && docker-compose ps` → postgres + `rabbitmq1` + `rabbitmq2` corriendo vía docker-compose.
+
+---
+
+## 8. Iteraciones y gotchas del despliegue (lecciones aprendidas)
+
+Errores que aparecieron durante el despliegue real y su solución. Revisar esta sección **antes y durante** el levantamiento en otro taller.
+
+### 8.1 Audience (`aud`) del JWT
+- El token de Azure AD trae `aud = b4a1d505-4e63-4d74-ad9a-5f7baf82b7dd` (**SIN** el prefijo `api://`), no `api://b4a1d505-...`.
+- Configurar el BFF (`AZURE_AUDIENCE`) y el autorizador del API Gateway con `b4a1d505-...` (GUID pelado).
+- Verificar el claim `aud` con **jwt.ms** tras el primer login; si hay 401 con token válido, es esto.
+
+### 8.2 CORS (preflight OPTIONS → 401/403)
+- El `OPTIONS` (preflight) no lleva token, por lo que el autorizador JWT del Gateway lo rechazaba (401); luego el BFF rechazaba el origen (403 "Invalid CORS request").
+- Fix en **3 partes**:
+  1. CORS en el API Gateway: `AllowOrigins=*`, métodos (incl. `OPTIONS`), headers `authorization,content-type`.
+  2. Ruta `OPTIONS /api/{proxy+}` **sin** autorizador.
+  3. `CorsConfig.java` del BFF con `setAllowedOriginPatterns(List.of("*"))` (la IP es efímera).
+
+### 8.3 MSAL exige HTTPS
+- MSAL usa `crypto.subtle`, que solo existe en `https://` o `localhost`. En `http://<IP>` el frontend queda en **pantalla en blanco**.
+- Fix: HTTPS en nginx con certificado autofirmado + redirect `80 → 443`.
+
+### 8.4 Clúster RabbitMQ: join manual
+- El env `CLUSTER_WITH` no unió el nodo 2 automáticamente. Join manual:
+  ```bash
+  docker exec rabbitmq2 rabbitmqctl stop_app
+  docker exec rabbitmq2 rabbitmqctl join_cluster rabbit@rabbitmq1
+  docker exec rabbitmq2 rabbitmqctl start_app
+  ```
+
+### 8.5 docker-compose en Amazon Linux 2023
+- `dnf install docker-compose-plugin` falla ("No match for argument"). Usar el binario standalone:
+  ```bash
+  curl -sL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+  chmod +x /usr/local/bin/docker-compose
+  ```
+
+### 8.6 Esquema de BD (`ddl-auto`)
+- Los servicios usan `ddl-auto: validate` en el perfil base. Correrlos con `SPRING_PROFILES_ACTIVE=dev` para que `ddl-auto: update` cree las tablas automáticamente.
+
+### 8.7 Puertos de seguridad (hardening)
+- **No exponer** los servicios (8081-8084) ni AMQP (5672) a internet: solo el BFF valida JWT. Dejar abiertos: `22`, `80`, `443`, `8080` (BFF, lo usa el API Gateway) y `15672` (RabbitMQ Management para la demo).
+- Evita los escaneos de internet que ensucian los logs.
+
+### 8.8 IP cambia al reiniciar el taller
+- Ver sección 5. Sin IP elástica, la IP cambia → hay que actualizar redirect URI (Azure), integración del Gateway, `environment.prod.ts` y certificado nginx.
+
+### 8.9 URLs del frontend (por lab)
+- En cada lab nuevo actualizar `environment.prod.ts` y `environment.ts` (`apiGatewayUrl` + `redirectUri`) y **reconstruir** el frontend. Estas IPs son temporales: **no versionarlas**.
+
+### 8.10 Iconos Material Symbols
+- Los iconos se cargan desde Google Fonts CDN (`fonts.googleapis.com`). Requieren internet en el navegador.
