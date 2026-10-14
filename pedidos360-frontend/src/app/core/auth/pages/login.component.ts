@@ -9,7 +9,7 @@ import { AuthService } from '../auth.service';
     <main class="login-container">
       <div class="login-card">
         <div class="logo" aria-hidden="true">
-          <span class="logo-mark">P360</span>
+          <span class="logo-mark material-symbols-outlined">local_shipping</span>
         </div>
 
         <h1>Pedidos360</h1>
@@ -72,9 +72,7 @@ import { AuthService } from '../auth.service';
       border-radius: var(--radius);
       background: var(--color-primary);
       color: #fff;
-      font-weight: 800;
-      font-size: 16px;
-      letter-spacing: 0.02em;
+      font-size: 30px;
     }
 
     h1 {

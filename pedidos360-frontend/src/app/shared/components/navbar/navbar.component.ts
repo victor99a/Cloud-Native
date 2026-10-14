@@ -10,34 +10,42 @@ const ROLES_PRODUCTOS = ['ADMIN', 'OPERADOR'];
   imports: [RouterLink, RouterLinkActive],
   template: `
     <nav class="navbar" aria-label="Navegación principal">
-      <a class="brand" routerLink="/dashboard" (click)="closeMenu()">Pedidos360</a>
+      <div class="navbar-inner">
+        <a class="brand" routerLink="/dashboard" (click)="closeMenu()">
+          <span class="brand-icon material-symbols-outlined" aria-hidden="true">local_shipping</span>
+          <span class="brand-name">Pedidos360</span>
+        </a>
 
-      <button
-        class="menu-toggle"
-        type="button"
-        [attr.aria-label]="menuOpen() ? 'Cerrar menú' : 'Abrir menú'"
-        [attr.aria-expanded]="menuOpen()"
-        aria-controls="nav-links"
-        (click)="menuOpen.set(!menuOpen())"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
+        <button
+          class="menu-toggle"
+          type="button"
+          [attr.aria-label]="menuOpen() ? 'Cerrar menú' : 'Abrir menú'"
+          [attr.aria-expanded]="menuOpen()"
+          aria-controls="nav-links"
+          (click)="menuOpen.set(!menuOpen())"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
 
-      <div class="nav-links" id="nav-links" [class.open]="menuOpen()">
-        <a routerLink="/dashboard" routerLinkActive="active" (click)="closeMenu()">Dashboard</a>
-        <a routerLink="/pedidos" routerLinkActive="active" (click)="closeMenu()">Pedidos</a>
-        @if (puedeVerProductos()) {
-          <a routerLink="/productos" routerLinkActive="active" (click)="closeMenu()">Productos</a>
-        }
+        <div class="nav-links" id="nav-links" [class.open]="menuOpen()">
+          <a routerLink="/dashboard" routerLinkActive="active" (click)="closeMenu()">Dashboard</a>
+          <a routerLink="/pedidos" routerLinkActive="active" (click)="closeMenu()">Pedidos</a>
+          @if (puedeVerProductos()) {
+            <a routerLink="/productos" routerLinkActive="active" (click)="closeMenu()">Productos</a>
+          }
 
-        <span class="nav-spacer"></span>
+          <span class="nav-spacer"></span>
 
-        @if (nombreUsuario()) {
-          <span class="user" [title]="nombreUsuario()">{{ nombreUsuario() }}</span>
-        }
-        <button class="logout" type="button" (click)="logout()">Cerrar sesión</button>
+          @if (nombreUsuario()) {
+            <span class="user" [title]="nombreUsuario()">
+              <span class="user-icon material-symbols-outlined" aria-hidden="true">account_circle</span>
+              <span class="user-name">{{ nombreUsuario() }}</span>
+            </span>
+          }
+          <button class="logout" type="button" (click)="logout()">Cerrar sesión</button>
+        </div>
       </div>
     </nav>
   `,
@@ -46,22 +54,46 @@ const ROLES_PRODUCTOS = ['ADMIN', 'OPERADOR'];
       position: sticky;
       top: 0;
       z-index: 50;
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px 20px;
-      padding: 12px clamp(16px, 4vw, 24px);
       background: var(--color-surface);
       border-bottom: 1px solid var(--color-border);
       box-shadow: var(--shadow);
     }
 
+    .navbar-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      padding: 10px clamp(16px, 4vw, 24px);
+    }
+
     .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--color-text);
+      margin-right: 4px;
+    }
+
+    .brand-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: var(--color-primary);
+      color: #fff;
+      font-size: 20px;
+    }
+
+    .brand-name {
       font-weight: 700;
       font-size: 18px;
-      color: var(--color-primary);
-      text-decoration: none;
-      margin-right: 4px;
+      letter-spacing: -0.01em;
     }
 
     .nav-links {
@@ -100,9 +132,20 @@ const ROLES_PRODUCTOS = ['ADMIN', 'OPERADOR'];
     }
 
     .user {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 13px;
       color: var(--color-text-muted);
-      max-width: 180px;
+      max-width: 220px;
+    }
+
+    .user-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .user-name {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -116,12 +159,17 @@ const ROLES_PRODUCTOS = ['ADMIN', 'OPERADOR'];
       padding: 8px 14px;
       font-size: 14px;
       font-weight: 500;
+      font-family: inherit;
       cursor: pointer;
-      transition: background var(--transition);
+      transition:
+        background var(--transition),
+        border-color var(--transition);
     }
 
     .logout:hover {
-      background: var(--color-bg);
+      background: var(--color-danger-soft);
+      border-color: var(--color-danger);
+      color: var(--color-danger);
     }
 
     /* Botón hamburguesa (solo móvil) */
