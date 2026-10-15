@@ -4,6 +4,12 @@
 **Alcance:** `pedidos360-consumer-service`, `pedidos360-pedidos-service` (productor), `pedidos360-admin-service`, `infra/apps/docker-compose.yml`, BFF y frontend.
 **Criterio:** Rúbricas EP3 (indicadores RabbitMQ) y EP4 (infraestructura/despliegue) de Duoc UC.
 
+> **Actualización de arquitectura (15/10/2026):** el entorno dejó de desplegarse en
+> AWS/Azure. Ahora es **100% local** con Docker Compose: el API Manager/Azure AD se
+> sustituyó por **Spring Cloud Gateway** + **Keycloak (IDaaS local)**, y el frontend
+> migró de MSAL a `keycloak-angular`. La topología de mensajería (RabbitMQ) descrita en
+> este informe **no cambia**. Ver `docs/GUION_DEMO_EP4.md` y `docs/RUNBOOK_DESPLIEGUE.md`.
+
 ## Tabla resumen de cumplimiento
 
 | # | Indicador | Veredicto | Evidencia |

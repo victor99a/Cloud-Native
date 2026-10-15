@@ -1,4 +1,5 @@
 services:
+  # ===================== Base de datos =====================
   postgres:
     image: postgres:16-alpine
     environment:
@@ -9,13 +10,15 @@ services:
       - postgres-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
-    mem_limit: 200m
+    mem_limit: 256m
+    networks: [pedidos360-net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # ===================== Clúster RabbitMQ (2 nodos) =====================
   rabbitmq1:
     image: rabbitmq:3.13-management
     hostname: rabbitmq1
@@ -29,6 +32,7 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks: [pedidos360-net]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
@@ -51,12 +55,39 @@ services:
     depends_on:
       rabbitmq1:
         condition: service_healthy
+    networks: [pedidos360-net]
     healthcheck:
+      # El nodo 2 solo está "healthy" si forma parte real del clúster con el nodo 1.
       test: ["CMD-SHELL", "rabbitmqctl cluster_status | grep -q 'rabbit@rabbitmq1'"]
       interval: 10s
       timeout: 10s
-      retries: 20
+      retries: 30
 
+  # ===================== IDaaS / Proveedor de Identidad (Keycloak) =====================
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8090
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "8090:8080"
+    mem_limit: 1024m
+    networks: [pedidos360-net]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'UP' <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # ===================== Microservicio productor (pedidos + RabbitMQ) =====================
   pedidos-service:
     build:
       context: ../../pedidos360-pedidos-service
@@ -73,8 +104,9 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports:
-      - "8081:8081"
+      - "8082:8081"
     mem_limit: 320m
+    networks: [pedidos360-net]
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,8 +125,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports:
-      - "8082:8082"
+      - "8083:8082"
     mem_limit: 320m
+    networks: [pedidos360-net]
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,10 +142,13 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports:
-      - "8083:8083"
+      - "8084:8083"
     mem_limit: 320m
+    networks: [pedidos360-net]
     depends_on:
       rabbitmq1:
+        condition: service_healthy
+      rabbitmq2:
         condition: service_healthy
 
   admin-service:
@@ -125,12 +161,14 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports:
-      - "8084:8084"
+      - "8085:8084"
     mem_limit: 320m
+    networks: [pedidos360-net]
     depends_on:
       rabbitmq1:
         condition: service_healthy
 
+  # ===================== BFF (Backend For Frontend) =====================
   bff:
     build:
       context: ../../pedidos360-bff
@@ -138,15 +176,54 @@ services:
       SPRING_PROFILES_ACTIVE: dev
       DOWNSTREAM_PEDIDOS_URL: http://pedidos-service:8081
       DOWNSTREAM_PRODUCTOS_URL: http://productos-service:8082
-      AZURE_ISSUER_URI: ${AZURE_ISSUER_URI}
-      AZURE_AUDIENCE: ${AZURE_AUDIENCE}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/pedidos360}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/pedidos360/protocol/openid-connect/certs}
+      KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE:-pedidos360-spa}
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports:
-      - "8080:8080"
+      - "8081:8080"
     mem_limit: 320m
+    networks: [pedidos360-net]
     depends_on:
       - pedidos-service
       - productos-service
 
+  # ===================== API Gateway (punto único de entrada) =====================
+  gateway:
+    build:
+      context: ../../pedidos360-gateway
+    environment:
+      BFF_URI: http://bff:8080
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/pedidos360}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/pedidos360/protocol/openid-connect/certs}
+      KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE:-pedidos360-spa}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports:
+      - "8080:8080"
+    mem_limit: 320m
+    networks: [pedidos360-net]
+    depends_on:
+      - bff
+
+  # ===================== Frontend Angular (nginx) =====================
+  frontend:
+    build:
+      context: ../../pedidos360-frontend
+    ports:
+      - "4200:80"
+    networks: [pedidos360-net]
+    depends_on:
+      - gateway
+      - keycloak
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres-data:
+
+networks:
+  pedidos360-net:
+    driver: bridge

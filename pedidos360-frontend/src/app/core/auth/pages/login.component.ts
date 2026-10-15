@@ -19,17 +19,17 @@ import { AuthService } from '../auth.service';
         </p>
 
         <button class="login-button" type="button" (click)="login()">
-          <svg viewBox="0 0 23 23" width="20" height="20" aria-hidden="true">
-            <rect x="1" y="1" width="10" height="10" fill="#f25022" />
-            <rect x="12" y="1" width="10" height="10" fill="#7fba00" />
-            <rect x="1" y="12" width="10" height="10" fill="#00a4ef" />
-            <rect x="12" y="12" width="10" height="10" fill="#ffb900" />
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18 7 3.11v4.71c0 4.25-2.76 8.31-7 9.79-4.24-1.48-7-5.54-7-9.79V6.29l7-3.11zm-1 5.07v4.5h2v-4.5h-2zm0 6v2h2v-2h-2z"
+            />
           </svg>
-          Iniciar sesión con Microsoft
+          Iniciar sesión
         </button>
 
         <p class="footer-note">
-          Usa tu cuenta institucional (Azure AD / Entra ID).
+          Autenticación centralizada con Keycloak (OAuth 2.0 / OpenID Connect).
         </p>
       </div>
     </main>

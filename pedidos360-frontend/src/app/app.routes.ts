@@ -7,10 +7,6 @@ export const routes: Routes = [
     loadComponent: () => import('./core/auth/pages/login.component').then((m) => m.LoginComponent),
   },
   {
-    path: 'auth/callback',
-    loadComponent: () => import('./core/auth/pages/auth-callback.component').then((m) => m.AuthCallbackComponent),
-  },
-  {
     path: 'pedidos',
     loadChildren: () => import('./features/pedidos/pedidos.routes').then((m) => m.pedidosRoutes),
     canActivate: [authGuard],

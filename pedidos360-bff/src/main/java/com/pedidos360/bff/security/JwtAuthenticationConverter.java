@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
-    private final AzureAdRolesConverter rolesConverter;
+    private final KeycloakRolesConverter rolesConverter;
 
-    public JwtAuthenticationConverter(AzureAdRolesConverter rolesConverter) {
+    public JwtAuthenticationConverter(KeycloakRolesConverter rolesConverter) {
         this.rolesConverter = rolesConverter;
     }
 

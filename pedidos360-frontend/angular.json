@@ -18,7 +18,7 @@
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
-            "assets": [],
+            "assets": ["src/silent-check-sso.html"],
             "styles": ["src/styles.css"],
             "scripts": []
           },
