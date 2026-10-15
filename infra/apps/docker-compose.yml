@@ -23,6 +23,9 @@ services:
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-pedidos360-erlang-cookie}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_NODENAME: rabbit@rabbitmq1
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/10-cluster.conf:ro
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -39,8 +42,9 @@ services:
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-pedidos360-erlang-cookie}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
-      CLUSTER_WITH: rabbitmq1
       RABBITMQ_NODENAME: rabbit@rabbitmq2
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/10-cluster.conf:ro
     ports:
       - "5673:5672"
       - "15673:15672"
@@ -48,10 +52,10 @@ services:
       rabbitmq1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      test: ["CMD-SHELL", "rabbitmqctl cluster_status | grep -q 'rabbit@rabbitmq1'"]
       interval: 10s
       timeout: 10s
-      retries: 15
+      retries: 20
 
   pedidos-service:
     build:
