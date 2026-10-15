@@ -1,11 +1,15 @@
 package com.pedidos360.consumerservice.config;
 
+import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -134,5 +138,23 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(documentosDlq())
                 .to(pedidosDlxExchange())
                 .with(props.queueDocumentosDlq());
+    }
+
+    // ===== Listener container factory resiliente =====
+
+    /**
+     * Factory explícita del contenedor de escucha: ACK manual y, ante una excepción
+     * no controlada (p. ej. canal cerrado), NACK sin requeue para que el mensaje se
+     * desvíe a la DLQ en lugar de entrar en redelivery infinito.
+     */
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            SimpleRabbitListenerContainerFactoryConfigurer configurer,
+            ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setDefaultRequeueRejected(false);
+        return factory;
     }
 }

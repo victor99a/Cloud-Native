@@ -68,7 +68,22 @@
 
 ## 4. Cómo levantar de nuevo (si se reinicia el taller)
 
+> **Guía completa y actualizada:** [`docs/RUNBOOK_DESPLIEGUE.md`](RUNBOOK_DESPLIEGUE.md) — 13 pasos de extremo a extremo (prerequisitos, clonar, credenciales, compilar, EC2, clúster RabbitMQ con *join automático*, servicios, nginx, API Gateway, checklist EP3/EP4 y gotchas).
+
 > **Caveat importante:** los AWS Academy Learner Labs son **efímeros**. Al reiniciar la sesión cambian las credenciales, la IP y (normalmente) se eliminan los recursos (EC2, API Gateway). Hay que rehacer el despliegue. El **código NO se pierde** (está en GitHub).
+
+### Resumen rápido (pasos)
+
+1. **Validar credenciales** con `aws sts get-caller-identity`. Si da `InvalidClientTokenId`, el `aws_session_token` está **truncado** (debe terminar en `=`) → usar el botón **copiar 📋** del panel "Cloud Access", no seleccionar el texto a mano.
+2. **Clonar y cambiar de rama:** `git clone https://github.com/victor99a/Cloud-Native.git && cd Cloud-Native && git checkout develop`.
+3. **Compilar** los 5 JARs: `mvn -DskipTests package -f <servicio>/pom.xml` (bff, pedidos, productos, consumer, admin).
+4. **EC2:** security group (puertos `22,80,443,8080,8081-8084,15672,5672`) + AMI *Amazon Linux 2023* `t3.medium` + `userdata` que instala docker/git/java/nginx.
+5. **Subir** los 5 JARs, `docker-compose.yml` y `infra/apps/rabbitmq/rabbitmq.conf` con `scp`.
+6. **Levantar RabbitMQ clúster + PostgreSQL:** `docker-compose up -d rabbitmq1 rabbitmq2 postgres`. El nodo 2 se une **solo** por *peer discovery* (ya NO hace falta el join manual con `CLUSTER_WITH`). Verificar con `rabbitmq-diagnostics cluster_status` (2 nodos).
+7. **Correr los 5 servicios** con `SPRING_PROFILES_ACTIVE=dev` (para que `ddl-auto:update` cree las tablas).
+8. **Frontend:** compilar con `environment.prod.ts` actualizado (IP + API Gateway nuevos), servir con **nginx + HTTPS** (obligatorio para MSAL).
+9. **API Gateway + autorizador JWT** de Azure AD (`issuer` `.../v2.0`, `audience` `b4a1d505-...`).
+10. **Registrar redirect URI** `https://<IP>` en Azure AD y recompilar/re-subir el frontend.
 
 ### Paso 1 — Obtener credenciales del lab y configurar AWS CLI
 
