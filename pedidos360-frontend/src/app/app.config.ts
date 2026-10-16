@@ -1,44 +1,35 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  provideZoneChangeDetection,
+} from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HTTP_INTERCEPTORS,
+  provideHttpClient,
+  withInterceptors,
+  withInterceptorsFromDi,
+} from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import {
-  MSAL_INSTANCE,
-  MSAL_GUARD_CONFIG,
-  MSAL_INTERCEPTOR_CONFIG,
-  MsalService,
-  MsalGuard,
-  MsalBroadcastService,
-  MsalInterceptor,
-  MsalGuardConfiguration,
-  MsalInterceptorConfiguration,
-} from '@azure/msal-angular';
-import {
-  InteractionType,
-  IPublicClientApplication,
-  PublicClientApplication,
-} from '@azure/msal-browser';
+import { KeycloakBearerInterceptor, KeycloakService } from 'keycloak-angular';
 import { routes } from './app.routes';
-import { msalConfig, protectedResourceMap } from './core/auth/msal-config';
+import { keycloakConfig, keycloakInitOptions } from './core/auth/keycloak-config';
+import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { httpErrorInterceptor } from './core/interceptors/http-error.interceptor';
-import { environment } from './environments/environment';
 
-export function msalInstanceFactory(): IPublicClientApplication {
-  return new PublicClientApplication(msalConfig);
-}
-
-export function msalGuardConfigFactory(): MsalGuardConfiguration {
-  return {
-    interactionType: InteractionType.Redirect,
-    authRequest: { scopes: environment.azureAd.scopes },
-  };
-}
-
-export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  return {
-    interactionType: InteractionType.Redirect,
-    protectedResourceMap,
-  };
+/**
+ * Inicializa Keycloak antes de arrancar la aplicación (check-sso).
+ * keycloak-angular v16 expone la API clásica (KeycloakService.init), no
+ * provideKeycloak (que es de v19+).
+ */
+function initializeKeycloak(keycloak: KeycloakService): () => Promise<boolean> {
+  return () =>
+    keycloak.init({
+      config: keycloakConfig,
+      initOptions: keycloakInitOptions,
+      enableBearerInterceptor: true,
+      loadUserProfileAtStartUp: false,
+    });
 }
 
 export const appConfig: ApplicationConfig = {
@@ -46,12 +37,23 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
-    provideHttpClient(withInterceptors([MsalInterceptor, httpErrorInterceptor])),
-    { provide: MSAL_INSTANCE, useFactory: msalInstanceFactory },
-    { provide: MSAL_GUARD_CONFIG, useFactory: msalGuardConfigFactory },
-    { provide: MSAL_INTERCEPTOR_CONFIG, useFactory: msalInterceptorConfigFactory },
-    MsalService,
-    MsalGuard,
-    MsalBroadcastService,
+    provideHttpClient(
+      withInterceptors([loadingInterceptor, httpErrorInterceptor]),
+      withInterceptorsFromDi(),
+    ),
+    // Servicio de autenticación de keycloak-angular (no es providedIn: 'root').
+    KeycloakService,
+    // Interceptor que adjunta el Bearer token a las peticiones HTTP salientes.
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: KeycloakBearerInterceptor,
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeKeycloak,
+      deps: [KeycloakService],
+      multi: true,
+    },
   ],
 };

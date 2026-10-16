@@ -1,12 +1,11 @@
+// Configuración de producción (contenedor nginx en Docker Compose).
+// Mismos endpoints locales: Keycloak en :8090 y Gateway en :8080.
 export const environment = {
   production: true,
-  apiGatewayUrl: 'https://<API_GATEWAY_URL>/api',
-  azureAd: {
-    tenantId: '<TENANT_ID>',
-    clientId: '<CLIENT_ID>',
-    authority: 'https://login.microsoftonline.com/<TENANT_ID>',
-    redirectUri: 'https://<FRONTEND_DOMAIN>',
-    postLogoutRedirectUri: 'https://<FRONTEND_DOMAIN>',
-    scopes: ['api://<API_APP_ID>/access_as_user'],
+  apiGatewayUrl: 'http://localhost:8080',
+  keycloak: {
+    url: 'http://localhost:8090',
+    realm: 'pedidos360',
+    clientId: 'pedidos360-spa',
   },
 };

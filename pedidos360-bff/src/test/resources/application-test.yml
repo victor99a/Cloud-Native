@@ -1,0 +1,2 @@
+# BFF ya no usa JPA/datasource. El JwtDecoder real se sustituye por un bean
+# @Primary en la configuración de test (ver BffSecurityTest / Pedidos360BffApplicationTests).

@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: pedidos360-gateway
+  cloud:
+    gateway:
+      # Deduplica los encabezados CORS del BFF (aguas abajo) para no duplicarlos.
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      routes:
+        - id: bff
+          uri: ${BFF_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/**
+
+# Validación del JWT de Keycloak (IDaaS local). Cero hardcoding.
+app:
+  security:
+    keycloak:
+      issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/pedidos360}
+      jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/pedidos360/protocol/openid-connect/certs}
+      audience: ${KEYCLOAK_AUDIENCE:pedidos360-spa}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

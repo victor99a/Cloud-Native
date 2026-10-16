@@ -1,0 +1,103 @@
+{
+  "realm": "pedidos360",
+  "displayName": "Pedidos360",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "clients": [
+    {
+      "clientId": "pedidos360-spa",
+      "name": "Pedidos360 SPA (Angular)",
+      "description": "Cliente público SPA (Authorization Code + PKCE) consumido por el frontend Angular.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "http://localhost:4200",
+        "http://localhost:4200/silent-check-sso.html"
+      ],
+      "webOrigins": ["http://localhost:4200", "+"],
+      "defaultClientScopes": ["web-origins", "roles", "profile", "email"],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "pedidos360-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "pedidos360-spa",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "ADMIN", "description": "Acceso total: pedidos, productos y administración." },
+      { "name": "OPERADOR", "description": "Gestión operativa de pedidos y productos." },
+      { "name": "CLIENTE", "description": "Consulta y creación de pedidos." }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Administrador",
+      "lastName": "Pedidos360",
+      "email": "admin@pedidos360.cl",
+      "credentials": [
+        { "type": "password", "value": "admin123", "temporary": false }
+      ],
+      "realmRoles": ["ADMIN"],
+      "groups": []
+    },
+    {
+      "username": "operador",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Operador",
+      "lastName": "Pedidos360",
+      "email": "operador@pedidos360.cl",
+      "credentials": [
+        { "type": "password", "value": "operador123", "temporary": false }
+      ],
+      "realmRoles": ["OPERADOR"],
+      "groups": []
+    },
+    {
+      "username": "cliente",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Cliente",
+      "lastName": "Pedidos360",
+      "email": "cliente@pedidos360.cl",
+      "credentials": [
+        { "type": "password", "value": "cliente123", "temporary": false }
+      ],
+      "realmRoles": ["CLIENTE"],
+      "groups": []
+    }
+  ]
+}

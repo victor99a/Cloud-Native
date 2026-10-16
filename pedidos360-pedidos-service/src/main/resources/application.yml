@@ -1,0 +1,36 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: pedidos-pedidos-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pedidos360}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# Nombres de exchanges y routing keys del productor, centralizados (cero hardcoding).
+pedidos360:
+  rabbitmq:
+    exchange-topic: pedidos360.topic
+    exchange-direct: pedidos360.direct
+    routing-pedido-creado: pedido.creado
+    routing-pedido-estado-prefix: "pedido.estado."
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

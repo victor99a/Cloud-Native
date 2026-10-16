@@ -1,0 +1,284 @@
+/* ============================================================================
+ * Pedidos360 — Design system global
+ * Tokens de color, tipografía, radios, sombras y espaciado. Los componentes
+ * deben usar estas variables en lugar de colores hardcodeados.
+ * ========================================================================== */
+
+:root {
+  /* Colores base */
+  --color-bg: #f4f5f9;
+  --color-surface: #ffffff;
+  --color-border: #e2e4ec;
+  --color-text: #1f2333;
+  --color-text-muted: #6b7086;
+
+  /* Primario (marca) */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-soft: #eef2ff;
+
+  /* Estados semánticos */
+  --color-danger: #dc2626;
+  --color-danger-soft: #fee2e2;
+  --color-success: #16a34a;
+  --color-success-soft: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-soft: #fef3c7;
+  --color-info: #2563eb;
+  --color-info-soft: #dbeafe;
+  --color-teal: #0d9488;
+  --color-teal-soft: #ccfbf1;
+
+  /* Tipografía */
+  --font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    sans-serif;
+
+  /* Radios */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* Sombras */
+  --shadow: 0 1px 3px rgba(15, 15, 35, 0.08);
+  --shadow-md: 0 4px 12px rgba(15, 15, 35, 0.1);
+  --shadow-lg: 0 10px 30px rgba(15, 15, 35, 0.2);
+
+  /* Espaciado */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+
+  /* Focus accesible */
+  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);
+
+  /* Transición */
+  --transition: 0.15s ease;
+}
+
+/* ============================================================================
+ * Reset
+ * ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 8px;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+p {
+  color: var(--color-text-muted);
+  margin: 0 0 16px;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+/* Foco visible para navegación por teclado (accesibilidad) */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+ * Layout reutilizable
+ * ========================================================================== */
+
+/* Contenedor de página responsivo */
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px clamp(16px, 4vw, 24px) 56px;
+}
+
+/* Encabezado de página: título + acción. Se apila en móvil. */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+}
+
+.page-subtitle {
+  margin: 0;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ============================================================================
+ * Formularios
+ * ========================================================================== */
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  width: 100%;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+ * Tablas
+ * ========================================================================== */
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+th,
+td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+th {
+  background: #fafafe;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: #fafafe;
+}
+
+/* ============================================================================
+ * Mensajes y estados
+ * ========================================================================== */
+
+.error-message {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--color-text-muted);
+}
+
+.empty-state .empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* ============================================================================
+ * Responsive: ajustes globales
+ * ========================================================================== */
+
+@media (max-width: 640px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
