@@ -8,9 +8,9 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 
 /**
  * Decodificador/validador de JWT del Gateway.
@@ -26,8 +26,8 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 public class JwtDecoderConfig {
 
     @Bean
-    public JwtDecoder keycloakJwtDecoder(KeycloakJwtProperties props) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(props.jwkSetUri()).build();
+    public ReactiveJwtDecoder keycloakJwtDecoder(KeycloakJwtProperties props) {
+        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(props.jwkSetUri()).build();
 
         OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(props.issuerUri());
         OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
