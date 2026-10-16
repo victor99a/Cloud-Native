@@ -33,6 +33,19 @@
       "webOrigins": ["http://localhost:4200", "+"],
       "defaultClientScopes": ["web-origins", "roles", "profile", "email"],
       "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "pedidos360-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "pedidos360-spa",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:4200/*"

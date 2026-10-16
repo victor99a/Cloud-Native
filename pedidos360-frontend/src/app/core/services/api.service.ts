@@ -5,7 +5,8 @@ import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly baseUrl = environment.apiGatewayUrl;
+  // El Gateway expone la API bajo el prefijo /api (rutas /api/** hacia el BFF).
+  private readonly baseUrl = `${environment.apiGatewayUrl}/api`;
 
   constructor(private readonly http: HttpClient) {}
 
