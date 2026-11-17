@@ -1,5 +1,6 @@
 package com.pedidos360.consumerservice.notifications.consumer;
 
+import com.pedidos360.consumerservice.messaging.NonRetryableException;
 import com.rabbitmq.client.Channel;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,8 +12,12 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 /**
- * Consumidor del dominio de notificaciones. Confirma manualmente cada mensaje
- * (ACK) y desvía los fallos irrecuperables a la DLQ mediante NACK con requeue=false.
+ * Consumidor del dominio de notificaciones. Confirma manualmente cada mensaje (ACK)
+ * y decide de forma explícita la ruta de error:
+ * <ul>
+ *   <li>Error irrecuperable ({@link NonRetryableException}) -> NACK requeue=false -> DLQ.</li>
+ *   <li>Error transitorio (cualquier otra excepción) -> NACK requeue=true -> reintento.</li>
+ * </ul>
  */
 @Slf4j
 @Component
@@ -31,17 +36,22 @@ public class NotificationConsumer {
             process(payload);
             channel.basicAck(deliveryTag, false);
             log.info("[notificaciones] PROCESADO_OK deliveryTag={}", deliveryTag);
-        } catch (Exception ex) {
-            // Error irrecuperable: NACK con requeue=false -> el mensaje va a su DLQ.
-            log.error("[notificaciones] FALLO irrecuperable -> DLQ deliveryTag={} error={}",
+        } catch (NonRetryableException ex) {
+            // Error permanente (poison message): nunca podrá procesarse -> DLQ.
+            log.error("[notificaciones] IRRECUPERABLE -> DLQ deliveryTag={} error={}",
                     deliveryTag, ex.getMessage(), ex);
             channel.basicNack(deliveryTag, false, false);
+        } catch (Exception ex) {
+            // Error transitorio: se reintenta devolviendo el mensaje a la cola (requeue).
+            log.warn("[notificaciones] Transitorio -> reintento deliveryTag={} error={}",
+                    deliveryTag, ex.getMessage());
+            channel.basicNack(deliveryTag, false, true);
         }
     }
 
     private void process(String payload) {
         if (payload == null || payload.isBlank()) {
-            throw new IllegalArgumentException("payload vacío");
+            throw new NonRetryableException("payload vacío");
         }
         // Aquí iría el envío real de la notificación (email/push).
         log.debug("[notificaciones] procesando notificación: {}", payload);

@@ -7,6 +7,7 @@ import com.pedidos360.pedidosservice.entity.Pedido;
 import com.pedidos360.pedidosservice.entity.PedidoItem;
 import com.pedidos360.pedidosservice.entity.Producto;
 import com.pedidos360.pedidosservice.exception.ResourceNotFoundException;
+import com.pedidos360.pedidosservice.messaging.PedidoEventKafkaProducer;
 import com.pedidos360.pedidosservice.messaging.PedidoEventPublisher;
 import com.pedidos360.pedidosservice.repository.PedidoRepository;
 import com.pedidos360.pedidosservice.repository.ProductoRepository;
@@ -23,14 +24,17 @@ public class PedidoServiceImpl implements PedidoService {
     private final PedidoRepository pedidoRepository;
     private final ProductoRepository productoRepository;
     private final PedidoEventPublisher eventPublisher;
+    private final PedidoEventKafkaProducer kafkaEventProducer;
 
     public PedidoServiceImpl(
             PedidoRepository pedidoRepository,
             ProductoRepository productoRepository,
-            PedidoEventPublisher eventPublisher) {
+            PedidoEventPublisher eventPublisher,
+            PedidoEventKafkaProducer kafkaEventProducer) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
         this.eventPublisher = eventPublisher;
+        this.kafkaEventProducer = kafkaEventProducer;
     }
 
     @Override
@@ -77,6 +81,7 @@ public class PedidoServiceImpl implements PedidoService {
         pedido.recalculateTotal();
         PedidoResponse response = toResponse(pedidoRepository.save(pedido));
         eventPublisher.publishPedidoCreado(response);
+        kafkaEventProducer.publishPedidoEvent(response);
         return response;
     }
 
@@ -87,6 +92,7 @@ public class PedidoServiceImpl implements PedidoService {
         pedido.setEstado(estado);
         PedidoResponse response = toResponse(pedidoRepository.save(pedido));
         eventPublisher.publishEstadoCambiado(response);
+        kafkaEventProducer.publishPedidoEvent(response);
         return response;
     }
 

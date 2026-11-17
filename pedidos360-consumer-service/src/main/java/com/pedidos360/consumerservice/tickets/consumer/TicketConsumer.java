@@ -1,5 +1,6 @@
 package com.pedidos360.consumerservice.tickets.consumer;
 
+import com.pedidos360.consumerservice.messaging.NonRetryableException;
 import com.rabbitmq.client.Channel;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,8 +12,12 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 /**
- * Consumidor del dominio de emisión de tickets. Confirma manualmente (ACK) y
- * desvía los fallos irrecuperables a la DLQ (NACK, requeue=false).
+ * Consumidor del dominio de emisión de tickets. Confirma manualmente (ACK) y decide
+ * la ruta de error de forma explícita:
+ * <ul>
+ *   <li>Error irrecuperable ({@link NonRetryableException}) -> NACK requeue=false -> DLQ.</li>
+ *   <li>Error transitorio (cualquier otra excepción) -> NACK requeue=true -> reintento.</li>
+ * </ul>
  */
 @Slf4j
 @Component
@@ -31,16 +36,20 @@ public class TicketConsumer {
             process(payload);
             channel.basicAck(deliveryTag, false);
             log.info("[tickets] PROCESADO_OK deliveryTag={}", deliveryTag);
-        } catch (Exception ex) {
-            log.error("[tickets] FALLO irrecuperable -> DLQ deliveryTag={} error={}",
+        } catch (NonRetryableException ex) {
+            log.error("[tickets] IRRECUPERABLE -> DLQ deliveryTag={} error={}",
                     deliveryTag, ex.getMessage(), ex);
             channel.basicNack(deliveryTag, false, false);
+        } catch (Exception ex) {
+            log.warn("[tickets] Transitorio -> reintento deliveryTag={} error={}",
+                    deliveryTag, ex.getMessage());
+            channel.basicNack(deliveryTag, false, true);
         }
     }
 
     private void process(String payload) {
         if (payload == null || payload.isBlank()) {
-            throw new IllegalArgumentException("payload vacío");
+            throw new NonRetryableException("payload vacío");
         }
         log.debug("[tickets] emitiendo ticket: {}", payload);
     }

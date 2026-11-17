@@ -1,0 +1,11 @@
+# Configuración de test: H2 en memoria (sin PostgreSQL ni Kafka reales).
+spring:
+  datasource:
+    url: jdbc:h2:mem:analyticstest;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
