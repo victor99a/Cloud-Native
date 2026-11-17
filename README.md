@@ -254,6 +254,14 @@ misma `RABBITMQ_ERLANG_COOKIE` y `rabbitmq_management`), **clúster Kafka de 3 Z
    curl -X GET http://localhost:8087/api/v1/kafka/consumer-groups
    ```
 
+## 📖 Documentación
+
+- [`docs/GUIA_DE_ESTUDIO_EP5.md`](docs/GUIA_DE_ESTUDIO_EP5.md) — **guía desde cero** con
+  analogías, diagramas y autoevaluación (ideal para estudiar y defender la arquitectura).
+- [`docs/ARQUITECTURA_KAFKA.md`](docs/ARQUITECTURA_KAFKA.md) — explicación técnica de
+  tolerancia a fallos, paralelismo y procesamiento distribuido en Kafka.
+- [`docs/GUIA_DE_ESTUDIO_EP4.md`](docs/GUIA_DE_ESTUDIO_EP4.md) — guía de la entrega anterior (RabbitMQ).
+
 ## 🌿 Modelo de ramas
 
 `feature/* → develop → main`. Ver `CONTRIBUTING.md`.
