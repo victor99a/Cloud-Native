@@ -102,6 +102,7 @@ services:
       ZOOKEEPER_INIT_LIMIT: 5
       ZOOKEEPER_SYNC_LIMIT: 2
       ZOOKEEPER_SERVERS: "zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888"
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,stat,mntr,srvr"
     volumes:
       - zookeeper1-data:/var/lib/zookeeper/data
       - zookeeper1-log:/var/lib/zookeeper/log
@@ -124,6 +125,7 @@ services:
       ZOOKEEPER_INIT_LIMIT: 5
       ZOOKEEPER_SYNC_LIMIT: 2
       ZOOKEEPER_SERVERS: "zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888"
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,stat,mntr,srvr"
     volumes:
       - zookeeper2-data:/var/lib/zookeeper/data
       - zookeeper2-log:/var/lib/zookeeper/log
@@ -146,6 +148,7 @@ services:
       ZOOKEEPER_INIT_LIMIT: 5
       ZOOKEEPER_SYNC_LIMIT: 2
       ZOOKEEPER_SERVERS: "zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888"
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,stat,mntr,srvr"
     volumes:
       - zookeeper3-data:/var/lib/zookeeper/data
       - zookeeper3-log:/var/lib/zookeeper/log
@@ -354,6 +357,8 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # Consumer group de alertas sobre el mismo tópico que analytics (fan-out).
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29093,kafka3:29094
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports:
       - "8084:8083"
@@ -363,6 +368,12 @@ services:
       rabbitmq1:
         condition: service_healthy
       rabbitmq2:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
         condition: service_healthy
 
   admin-service:

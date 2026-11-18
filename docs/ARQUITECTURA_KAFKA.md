@@ -43,10 +43,17 @@ La creación es **idempotente y doble**:
 
 ## 4. Procesamiento distribuido (consumer groups)
 
-| Consumer group | Tópico que consume | Responsabilidad |
-|----------------|--------------------|-----------------|
-| `pedidos360-analytics-group` | `pedidos360.pedidos.eventos` | Agregar métricas por estado en PostgreSQL y publicar resultados. |
-| `pedidos360-reporting-group` | `pedidos360.analitica.metricas` | Reportes/BI (desacoplado del grupo anterior). |
+| Consumer group | Microservicio | Tópico que consume | Responsabilidad |
+|----------------|---------------|--------------------|-----------------|
+| `pedidos360-analytics-group` | analytics-service | `pedidos360.pedidos.eventos` | Agregar métricas por estado en PostgreSQL y publicar resultados (`auto-offset-reset=earliest`: no perder historia). |
+| `pedidos360-alertas-group` | consumer-service | `pedidos360.pedidos.eventos` | Alertas en tiempo real: alto valor, cancelación, entrega (`latest`: solo eventos nuevos). |
+| `pedidos360-reporting-group` | analytics-service | `pedidos360.analitica.metricas` | Vista materializada del tópico compactado (último valor por estado). |
+| `pedidos360-dlt-monitor-group` | analytics-service | `pedidos360.pedidos.eventos.dlt` | Registrar con contexto los mensajes que fallaron. |
+
+**Compartir vs. dividir:** `analytics-group` y `alertas-group` son **dos microservicios distintos
+sobre el mismo tópico**: cada grupo recibe *todos* los eventos (publish/subscribe, se comparten los
+datos). Dentro de cada grupo, los 3 hilos (`concurrency=3`) se **dividen** las 3 particiones
+(balanceo); si se escala a más réplicas del servicio, Kafka rebalancea automáticamente.
 
 Cada grupo mantiene **sus propios offsets**, por lo que el segundo grupo puede leer los mismos
 mensajes sin interferir con el primero (distribución de responsabilidades). Kafka reparte las
@@ -65,14 +72,22 @@ las particiones se reasignan (resiliencia).
 
 `analytics-service` (`PedidoEventConsumer`, `MetricasConsumer`):
 - `@KafkaListener` con `@Payload` tipado (DTOs bien estructurados) y headers de partición/offset.
-- ACK manual (`ENABLE_AUTO_COMMIT_CONFIG=false`).
+- Commit controlado por el contenedor (`ENABLE_AUTO_COMMIT_CONFIG=false` + `AckMode.RECORD`):
+  el offset se confirma solo tras procesar (o desviar a DLT) cada registro.
+- `ErrorHandlingDeserializer` envolviendo al `JsonDeserializer`: un payload que no es JSON válido
+  (*poison pill*) no rompe el `poll()` ni bloquea la partición; llega como
+  `DeserializationException` y se envía **directo** a la DLT con sus bytes originales.
 - `DefaultErrorHandler` con `DeadLetterPublishingRecoverer`:
   1. Validación del payload (pedidoId, estado, total). Si es un *poison message*
      (`NonRetryableEventException`) → va directo a la DLT sin reintentos.
   2. Errores transitorios → **3 reintentos** con `FixedBackOff(1000 ms)`.
   3. Agotados los reintentos → el mensaje se publica en `pedidos360.pedidos.eventos.dlt`
      (preservando la partición original).
-- Logging contextual en cada recepción, éxito, fallo y desvío a DLT.
+- Logging contextual en cada recepción, reintento, fallo y desvío a DLT.
+- `DeadLetterConsumer` lee la DLT y registra tópico/partición/offset de origen, excepción y payload.
+
+`consumer-service` (`PedidoAlertasConsumer`): mismo esquema (`ErrorHandlingDeserializer`, 2
+reintentos, eventos inválidos → `NonRetryableException` → se registran y se saltan).
 
 ## 7. Microservicio administrador (`kafka-admin-service`)
 
@@ -80,9 +95,17 @@ Usa `AdminClient` para la gestión programática:
 
 - Tópicos: `POST /api/v1/kafka/topics`, `GET .../topics`, `GET .../topics/{name}`,
   `PUT .../topics/{name}/configs` (alterar retention/cleanup/min.insync.replicas),
+  `POST .../topics/{name}/partitions` (aumentar particiones para escalar consumidores),
   `DELETE .../topics/{name}`.
 - Consumer groups: `GET .../consumer-groups`, `GET .../consumer-groups/{groupId}`,
-  `DELETE .../consumer-groups/{groupId}`.
+  `GET .../consumer-groups/{groupId}/offsets` (offset confirmado, log-end offset y **lag** por
+  partición), `POST .../consumer-groups/{groupId}/offsets/reset` (earliest/latest, para reprocesar
+  o saltar backlog; el grupo debe estar inactivo), `DELETE .../consumer-groups/{groupId}`.
+- Clúster: `GET .../cluster` (id, controlador y brokers activos).
+
+**Lectura del lag:** lag ≈ 0 → el grupo va al día; lag creciendo de forma sostenida → consumidor
+caído, lento o reintentando (anticipa un problema antes de que el usuario lo note); lag concentrado
+en una sola partición → clave "caliente" (mala distribución de claves).
 
 Los DTOs están validados con Jakarta (`@NotBlank`, `@Pattern`, `@Min`) → HTTP 400 ante
 configuraciones inválidas, y `GlobalExceptionHandler` centraliza los errores sin filtrar
