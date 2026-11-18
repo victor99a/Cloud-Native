@@ -1,0 +1,202 @@
+# =============================================================================
+# Host "messaging" (EC2 t3.large) — plataforma de mensajería y streaming.
+#   - Clúster Apache Kafka: 3 Zookeeper (quorum) + 3 brokers + Kafka UI.
+#   - Clúster RabbitMQ de 2 nodos.
+# Los microservicios corren en el host "apps" y se conectan por la IP privada
+# de este host (variable MESSAGING_HOST en .env).
+#
+# Uso:  docker compose -f docker-compose.messaging.yml --env-file .env up -d
+# =============================================================================
+x-zookeeper-env: &zookeeper-env
+  ZOOKEEPER_CLIENT_PORT: 2181
+  ZOOKEEPER_TICK_TIME: 2000
+  ZOOKEEPER_INIT_LIMIT: 5
+  ZOOKEEPER_SYNC_LIMIT: 2
+  ZOOKEEPER_SERVERS: "zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888"
+  KAFKA_HEAP_OPTS: "-Xmx256m -Xms128m"
+  # Habilita los comandos de 4 letras usados por el healthcheck (ruok) y monitoreo.
+  KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,stat,mntr,srvr"
+
+x-kafka-env: &kafka-env
+  KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+
+x-zookeeper-health: &zookeeper-health
+  test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep -q imok"]
+  interval: 10s
+  timeout: 5s
+  retries: 30
+
+x-zookeepers-ready: &zookeepers-ready
+  zookeeper1:
+    condition: service_healthy
+  zookeeper2:
+    condition: service_healthy
+  zookeeper3:
+    condition: service_healthy
+
+services:
+  # ===================== Zookeeper (quorum de 3) =====================
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper1
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 1
+    volumes: [zookeeper1-data:/var/lib/zookeeper/data, zookeeper1-log:/var/lib/zookeeper/log]
+    healthcheck: *zookeeper-health
+    restart: unless-stopped
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper2
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes: [zookeeper2-data:/var/lib/zookeeper/data, zookeeper2-log:/var/lib/zookeeper/log]
+    healthcheck: *zookeeper-health
+    restart: unless-stopped
+
+  zookeeper3:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper3
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes: [zookeeper3-data:/var/lib/zookeeper/data, zookeeper3-log:/var/lib/zookeeper/log]
+    healthcheck: *zookeeper-health
+    restart: unless-stopped
+
+  # ===================== Brokers Kafka (3) =====================
+  # PLAINTEXT (2909X): tráfico interno entre brokers y Kafka UI.
+  # PLAINTEXT_HOST (909X): clientes del host "apps", anunciado con la IP privada.
+  kafka1:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka1
+    depends_on: *zookeepers-ready
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://${MESSAGING_HOST}:9092
+    ports: ["9092:9092"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka2
+    depends_on: *zookeepers-ready
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 2
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29093,PLAINTEXT_HOST://${MESSAGING_HOST}:9093
+    ports: ["9093:9093"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29093 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka3
+    depends_on: *zookeepers-ready
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 3
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29094,PLAINTEXT_HOST://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29094,PLAINTEXT_HOST://${MESSAGING_HOST}:9094
+    ports: ["9094:9094"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29094 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # Crea los 2 tópicos (3 particiones / 3 réplicas) + DLT. One-shot.
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      kafka1: { condition: service_healthy }
+      kafka2: { condition: service_healthy }
+      kafka3: { condition: service_healthy }
+    volumes: ["../apps/kafka/create-topics.sh:/create-topics.sh:ro"]
+    entrypoint: ["/bin/bash", "/create-topics.sh"]
+    environment:
+      BOOTSTRAP_SERVERS: kafka1:29092
+    restart: "no"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    depends_on: [kafka1, kafka2, kafka3]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pedidos360-aws
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29093,kafka3:29094
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper1:2181
+      JAVA_OPTS: "-Xmx256m"
+    ports: ["8091:8080"]
+    restart: unless-stopped
+
+  # ===================== Clúster RabbitMQ (2 nodos) =====================
+  rabbitmq1:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq1
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_NODENAME: rabbit@rabbitmq1
+    volumes: ["../apps/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/10-cluster.conf:ro"]
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+    restart: unless-stopped
+
+  rabbitmq2:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_NODENAME: rabbit@rabbitmq2
+    volumes: ["../apps/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/10-cluster.conf:ro"]
+    ports: ["5673:5672", "15673:15672"]
+    depends_on:
+      rabbitmq1: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmqctl cluster_status | grep -q 'rabbit@rabbitmq1'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  zookeeper1-data:
+  zookeeper1-log:
+  zookeeper2-data:
+  zookeeper2-log:
+  zookeeper3-data:
+  zookeeper3-log:

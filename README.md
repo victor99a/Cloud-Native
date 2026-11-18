@@ -135,17 +135,26 @@ Además de RabbitMQ (mensajería transaccional), el sistema publica los eventos 
 1. `pedidos-service` → productor Kafka → `pedidos360.pedidos.eventos` (key = número de pedido).
 2. `analytics-service` (consumer group `pedidos360-analytics-group`) → agrega por estado (PostgreSQL) y
    publica `MetricasPedidoDto` → `pedidos360.analitica.metricas` (key = estado).
-3. `analytics-service` (segundo group `pedidos360-reporting-group`) → consume las métricas (reportes/BI).
-4. Errores/validación → reintentos (3, backoff 1s) → Dead Letter Topic `pedidos360.pedidos.eventos.dlt`.
+3. `consumer-service` (group `pedidos360-alertas-group`) → lee **el mismo tópico** que analytics
+   (fan-out): genera alertas en tiempo real (alto valor, cancelación, entrega).
+4. `analytics-service` (group `pedidos360-reporting-group`) → consume las métricas y mantiene la
+   vista materializada del tópico compactado (`GET /api/analitica/reporting`).
+5. Errores/validación → `ErrorHandlingDeserializer` + reintentos (3, backoff 1s) → Dead Letter Topic
+   `pedidos360.pedidos.eventos.dlt`, monitoreada por `pedidos360-dlt-monitor-group` (log contextual).
+6. El dashboard de analítica del frontend se refresca cada 3 s (indicador "En vivo").
 
 La creación de tópicos es doble (idempotente): script `infra/apps/kafka/create-topics.sh`
 (contenedor `kafka-init`) y beans `NewTopic` en `analytics-service`.
 
 **Administración programática** — `kafka-admin-service` expone:
 - `POST /api/v1/kafka/topics`, `GET /api/v1/kafka/topics`, `GET /api/v1/kafka/topics/{name}`,
-  `PUT /api/v1/kafka/topics/{name}/configs`, `DELETE /api/v1/kafka/topics/{name}`.
+  `PUT /api/v1/kafka/topics/{name}/configs`, `POST /api/v1/kafka/topics/{name}/partitions`,
+  `DELETE /api/v1/kafka/topics/{name}`.
 - `GET /api/v1/kafka/consumer-groups`, `GET /api/v1/kafka/consumer-groups/{groupId}`,
+  `GET /api/v1/kafka/consumer-groups/{groupId}/offsets` (offsets + **lag**),
+  `POST /api/v1/kafka/consumer-groups/{groupId}/offsets/reset` (earliest/latest),
   `DELETE /api/v1/kafka/consumer-groups/{groupId}`.
+- `GET /api/v1/kafka/cluster` (brokers activos y controlador).
 
 > ℹ️ La creación de tópicos por defecto usa **3 particiones y 3 réplicas** (tolerancia a fallos
 > + paralelismo). Puedes alterar `retention.ms` y `cleanup.policy` con `PUT .../configs`.
@@ -252,10 +261,25 @@ misma `RABBITMQ_ERLANG_COOKIE` y `rabbitmq_management`), **clúster Kafka de 3 Z
    curl -X GET http://localhost:8087/api/v1/kafka/topics
    curl -X DELETE http://localhost:8087/api/v1/kafka/topics/demo.topic
    curl -X GET http://localhost:8087/api/v1/kafka/consumer-groups
+   curl -X GET http://localhost:8087/api/v1/kafka/consumer-groups/pedidos360-analytics-group/offsets
+   curl -X POST http://localhost:8087/api/v1/kafka/topics/demo.topic/partitions -H "Content-Type: application/json" \
+     -d '{"totalPartitions":6}'
+   curl -X GET http://localhost:8087/api/v1/kafka/cluster
    ```
+6. **Poison pill → DLT** (JSON inválido, no bloquea la partición):
+   ```bash
+   docker exec -it infra-apps-kafka1-1 kafka-console-producer --bootstrap-server localhost:29092 \
+     --topic pedidos360.pedidos.eventos --property parse.key=true --property key.separator=:
+   # escribir:  PED-X:esto no es json
+   ```
+   y ver en los logs de `analytics-service` la línea `[dlt-monitor] MENSAJE EN DLT ...`.
+7. **Fan-out entre microservicios** → crear un pedido y ver el mismo evento en los logs de
+   `analytics-service` (`[analitica]`) y de `consumer-service` (`[alertas]`).
 
 ## 📖 Documentación
 
+- [`docs/DESPLIEGUE_AWS.md`](docs/DESPLIEGUE_AWS.md) — despliegue en AWS (API Gateway como API
+  Manager, Cognito como IDaaS, 2 EC2 con Docker Compose) y guion de demo de la EP6.
 - [`docs/GUIA_DE_ESTUDIO_EP5.md`](docs/GUIA_DE_ESTUDIO_EP5.md) — **guía desde cero** con
   analogías, diagramas y autoevaluación (ideal para estudiar y defender la arquitectura).
 - [`docs/ARQUITECTURA_KAFKA.md`](docs/ARQUITECTURA_KAFKA.md) — explicación técnica de

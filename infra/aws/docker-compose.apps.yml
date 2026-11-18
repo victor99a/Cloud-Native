@@ -1,0 +1,138 @@
+# =============================================================================
+# Host "apps" (EC2 t3.large) — base de datos, microservicios y frontend.
+#   - IDaaS: Amazon Cognito (servicio administrado, no corre aquí).
+#   - API Manager: Amazon API Gateway (HTTP API) enruta /api/* -> gateway:8080
+#     y /* -> frontend:4200, validando el JWT de Cognito.
+#   - Kafka y RabbitMQ viven en el host "messaging" (MESSAGING_HOST, IP privada).
+#
+# Uso:  docker compose -f docker-compose.apps.yml --env-file .env up -d --build
+# =============================================================================
+x-java-service: &java-service
+  mem_limit: 320m
+  restart: unless-stopped
+
+x-db-env: &db-env
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: ${DB_NAME}
+  DB_USERNAME: ${DB_USERNAME}
+  DB_PASSWORD: ${DB_PASSWORD}
+
+x-rabbit-env: &rabbit-env
+  RABBITMQ_HOST: ${MESSAGING_HOST}
+  RABBITMQ_PORT: 5672
+  RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+x-jwt-env: &jwt-env
+  # Reutiliza los nombres de variables originales; los valores apuntan a Cognito.
+  KEYCLOAK_ISSUER_URI: ${JWT_ISSUER_URI}
+  KEYCLOAK_JWK_SET_URI: ${JWT_ISSUER_URI}/.well-known/jwks.json
+  KEYCLOAK_AUDIENCE: ${JWT_AUDIENCE}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  pedidos-service:
+    <<: *java-service
+    build: { context: ../../pedidos360-pedidos-service }
+    environment:
+      <<: [*db-env, *rabbit-env]
+      SPRING_PROFILES_ACTIVE: dev
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  productos-service:
+    <<: *java-service
+    build: { context: ../../pedidos360-productos-service }
+    environment:
+      <<: *db-env
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  consumer-service:
+    <<: *java-service
+    build: { context: ../../pedidos360-consumer-service }
+    environment:
+      <<: *rabbit-env
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+
+  admin-service:
+    <<: *java-service
+    build: { context: ../../pedidos360-admin-service }
+    environment:
+      <<: *rabbit-env
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports: ["8085:8084"]
+
+  analytics-service:
+    <<: *java-service
+    mem_limit: 384m
+    build: { context: ../../pedidos360-analytics-service }
+    environment:
+      <<: *db-env
+      SPRING_PROFILES_ACTIVE: dev
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  kafka-admin-service:
+    <<: *java-service
+    build: { context: ../../pedidos360-kafka-admin-service }
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports: ["8087:8087"]
+
+  bff:
+    <<: *java-service
+    build: { context: ../../pedidos360-bff }
+    environment:
+      <<: *jwt-env
+      SPRING_PROFILES_ACTIVE: dev
+      DOWNSTREAM_PEDIDOS_URL: http://pedidos-service:8081
+      DOWNSTREAM_PRODUCTOS_URL: http://productos-service:8082
+      DOWNSTREAM_ANALYTICS_URL: http://analytics-service:8086
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    depends_on: [pedidos-service, productos-service, analytics-service]
+
+  # Gateway de Spring: segunda línea de validación del JWT (defensa en profundidad).
+  gateway:
+    <<: *java-service
+    build: { context: ../../pedidos360-gateway }
+    environment:
+      <<: *jwt-env
+      BFF_URI: http://bff:8080
+      JAVA_TOOL_OPTIONS: -Xmx220m
+    ports: ["8080:8080"]
+    depends_on: [bff]
+
+  frontend:
+    build:
+      context: ../../pedidos360-frontend
+      args:
+        BUILD_CONFIGURATION: aws
+    ports: ["4200:80"]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

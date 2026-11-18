@@ -29,7 +29,7 @@ import { AuthService } from '../auth.service';
         </button>
 
         <p class="footer-note">
-          Autenticación centralizada con Keycloak (OAuth 2.0 / OpenID Connect).
+          Autenticación centralizada con IDaaS (OAuth 2.0 / OpenID Connect + PKCE).
         </p>
       </div>
     </main>

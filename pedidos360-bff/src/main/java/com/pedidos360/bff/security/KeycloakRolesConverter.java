@@ -28,6 +28,8 @@ public class KeycloakRolesConverter implements Converter<Jwt, Collection<Granted
 
         collectRoles(jwt.getClaimAsMap("realm_access"), roles);
         roles.addAll(nullSafe(jwt.getClaimAsStringList("roles")));
+        // Amazon Cognito: los grupos del User Pool (ADMIN, OPERADOR) viajan en "cognito:groups".
+        roles.addAll(nullSafe(jwt.getClaimAsStringList("cognito:groups")));
 
         Map<String, Object> resourceAccess = jwt.getClaimAsMap("resource_access");
         if (resourceAccess != null) {
