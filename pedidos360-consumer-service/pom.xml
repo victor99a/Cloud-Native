@@ -13,7 +13,7 @@
 
     <groupId>com.pedidos360</groupId>
     <artifactId>pedidos360-consumer-service</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <name>pedidos360-consumer-service</name>
     <description>Consumidores RabbitMQ de Pedidos360 (notificaciones, tickets, documentos)</description>
 

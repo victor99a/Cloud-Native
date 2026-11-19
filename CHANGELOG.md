@@ -1,6 +1,8 @@
 # Changelog — Pedidos360
 
-## Sin publicar
+## v1.2.0 — 2026-11-19
+
+Cierre de los pendientes P2 de la auditoría, desplegado y validado en AWS.
 
 ### Seguridad y consistencia (P2)
 - API Manager obligatorio: API Gateway agrega el encabezado secreto `X-Origin-Verify` y el gateway de
