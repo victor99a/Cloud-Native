@@ -223,6 +223,12 @@ ensure_integration() {  # $1 = sufijo que identifica la integración, $2 = URI d
   echo "$iid"
 }
 I_API=$(ensure_integration ':8080/api/{proxy}' "http://$APPS_IP:8080/api/{proxy}" ANY)
+# Secreto de origen: API Gateway lo agrega como encabezado y el gateway de Spring rechaza (403)
+# las peticiones a /api que no lo traen, así nadie se salta el API Manager llamando directo a :8080.
+# Se reutiliza el ya configurado en la integración (idempotente) o se genera uno nuevo.
+ORIGIN_SECRET=$(aws apigatewayv2 get-integration --api-id "$API_ID" --integration-id "$I_API"   --query 'RequestParameters."overwrite:header.X-Origin-Verify"' --output text)
+none "$ORIGIN_SECRET" && ORIGIN_SECRET=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
+aws apigatewayv2 update-integration --api-id "$API_ID" --integration-id "$I_API"   --request-parameters "{\"overwrite:header.X-Origin-Verify\":\"$ORIGIN_SECRET\"}" >/dev/null
 I_WEB=$(ensure_integration ':4200/{proxy}' "http://$APPS_IP:4200/{proxy}" GET)
 I_ROOT=$(ensure_integration ':4200/' "http://$APPS_IP:4200/" GET)
 
@@ -242,7 +248,7 @@ ensure_route 'GET /{proxy+}' "$I_WEB" none
 ensure_route 'GET /' "$I_ROOT" none
 aws apigatewayv2 get-stage --api-id "$API_ID" --stage-name '$default' >/dev/null 2>&1 \
   || aws apigatewayv2 create-stage --api-id "$API_ID" --stage-name '$default' --auto-deploy >/dev/null
-ok "ANY /api/{proxy+} [JWT] -> $APPS_IP:8080 | GET / y /{proxy+} -> $APPS_IP:4200"
+ok "ANY /api/{proxy+} [JWT + X-Origin-Verify] -> $APPS_IP:8080 | GET / y /{proxy+} -> $APPS_IP:4200"
 
 # -----------------------------------------------------------------------------
 log "7/9 Esperando que las EC2 terminen su bootstrap (Docker)"
@@ -279,6 +285,7 @@ RABBITMQ_ERLANG_COOKIE=$RABBIT_COOKIE
 JWT_ISSUER_URI=$ISSUER
 JWT_AUDIENCE=$CLIENT
 COGNITO_DOMAIN_URL=$COGNITO_DOMAIN_URL
+ORIGIN_SECRET=$ORIGIN_SECRET
 EOF
   (cd "$ROOT" && tar --exclude=node_modules --exclude=target --exclude=dist --exclude=.git --exclude=.omo \
      --exclude=.angular --exclude='*.env' --exclude=.env --warning=no-file-changed -czf "$WORK/code.tgz" .) \
@@ -325,6 +332,7 @@ ok "config.json:         $(curl -s "$API_URL/config.json" | grep -o '"clientId":
 ok "API sin token:       $(code "$API_URL/api/pedidos")  (esperado 401)"
 ok "API token inválido:  $(code -H 'Authorization: Bearer x.y.z' "$API_URL/api/pedidos")  (esperado 401)"
 ok "API token válido:    $(code -H "Authorization: Bearer $TOKEN" "$API_URL/api/pedidos")  (esperado 200)"
+ok "Directo a EC2 :8080:  $(code -H "Authorization: Bearer $TOKEN" "http://$APPS_IP:8080/api/pedidos")  (esperado 403: solo vía API Manager)"
 
 cat <<EOF
 

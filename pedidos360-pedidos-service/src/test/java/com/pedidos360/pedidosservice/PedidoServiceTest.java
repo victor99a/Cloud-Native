@@ -1,5 +1,6 @@
 package com.pedidos360.pedidosservice;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -91,6 +92,27 @@ class PedidoServiceTest {
         // Tras el commit se publica a RabbitMQ y a Kafka.
         verify(eventPublisher).publishPedidoCreado(any());
         verify(kafkaEventProducer).publishPedidoEvent(eq(TipoEventoPedido.PEDIDO_CREADO), any());
+    }
+
+    @Test
+    void numeroNoSeRepiteTrasEliminarUnPedido() {
+        Producto a = productoRepository.save(Producto.builder()
+                .sku("SKU-NUMERO")
+                .nombre("Producto Numero")
+                .precio(new BigDecimal("10.00"))
+                .build());
+        PedidoRequest pedido = new PedidoRequest("Cliente Numero",
+                List.of(new PedidoRequest.PedidoItemRequest(a.getId(), 1)));
+
+        var primero = pedidoService.create(pedido);
+        var segundo = pedidoService.create(pedido);
+        pedidoService.delete(primero.id());
+        var tercero = pedidoService.create(pedido);
+
+        // Con count()+1 el tercero repetía el número del segundo.
+        assertThat(tercero.numero()).isNotEqualTo(segundo.numero()).isNotEqualTo(primero.numero());
+        assertThat(tercero.numero()).isEqualTo(String.format("PED-%06d", tercero.id()));
+        assertThat(pedidoService.findById(tercero.id()).numero()).isEqualTo(tercero.numero());
     }
 
     @Test

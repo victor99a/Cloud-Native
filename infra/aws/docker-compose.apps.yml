@@ -123,6 +123,8 @@ services:
     environment:
       <<: *jwt-env
       BFF_URI: http://bff:8080
+      # Secreto que inyecta API Gateway: sin él, /api responde 403 (no se puede saltar el API Manager).
+      ORIGIN_SECRET: ${ORIGIN_SECRET:-}
       JAVA_TOOL_OPTIONS: -Xmx220m
     ports: ["8080:8080"]
     depends_on: [bff]

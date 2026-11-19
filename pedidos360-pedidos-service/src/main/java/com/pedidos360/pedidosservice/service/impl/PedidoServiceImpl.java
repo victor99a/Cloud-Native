@@ -16,6 +16,7 @@ import com.pedidos360.pedidosservice.service.PedidoService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -58,7 +59,8 @@ public class PedidoServiceImpl implements PedidoService {
     @Transactional
     public PedidoResponse create(PedidoRequest request) {
         Pedido pedido = Pedido.builder()
-                .numero(generarNumero())
+                // Número provisional único; el definitivo se deriva del id tras insertar.
+                .numero("TMP-" + UUID.randomUUID())
                 .cliente(request.cliente())
                 .fecha(LocalDateTime.now())
                 .estado(EstadoPedido.PENDIENTE)
@@ -82,7 +84,9 @@ public class PedidoServiceImpl implements PedidoService {
         }
 
         pedido.recalculateTotal();
-        PedidoResponse response = toResponse(pedidoRepository.save(pedido));
+        Pedido guardado = pedidoRepository.saveAndFlush(pedido);
+        guardado.setNumero(numeroDesdeId(guardado.getId()));
+        PedidoResponse response = toResponse(guardado);
         despuesDelCommit(() -> {
             eventPublisher.publishPedidoCreado(response);
             kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.PEDIDO_CREADO, response);
@@ -118,9 +122,12 @@ public class PedidoServiceImpl implements PedidoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido", id));
     }
 
-    private String generarNumero() {
-        long count = pedidoRepository.count() + 1;
-        return String.format("PED-%06d", count);
+    /**
+     * El número se deriva del id (IDENTITY de la BD): es único y nunca se reutiliza,
+     * aunque se eliminen pedidos o se creen varios en paralelo (con count()+1 se repetía).
+     */
+    static String numeroDesdeId(Long id) {
+        return String.format("PED-%06d", id);
     }
 
     private PedidoResponse toResponse(Pedido pedido) {

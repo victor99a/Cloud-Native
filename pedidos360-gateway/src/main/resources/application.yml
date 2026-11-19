@@ -15,6 +15,10 @@ spring:
           predicates:
             - Path=/api/**
 
+# Secreto compartido con el API Manager (encabezado X-Origin-Verify). Vacío = filtro inactivo (local).
+pedidos360:
+  origin-secret: ${ORIGIN_SECRET:}
+
 # Validación del JWT de Keycloak (IDaaS local). Cero hardcoding.
 app:
   security:

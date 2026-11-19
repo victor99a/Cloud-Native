@@ -85,6 +85,11 @@ las particiones se reasignan (resiliencia).
      (preservando la partición original).
 - Logging contextual en cada recepción, reintento, fallo y desvío a DLT.
 - `DeadLetterConsumer` lee la DLT y registra tópico/partición/offset de origen, excepción y payload.
+- **Una sola DLT para ambos consumidores** (eventos y métricas), por diseño: mantiene exactamente 2
+  tópicos de datos + 1 auxiliar. El origen no se pierde: `DeadLetterPublishingRecoverer` agrega los
+  encabezados `kafka_dlt-original-topic/-partition/-offset` y el monitor los registra
+  (`origen=<tópico>-<partición>@<offset>`). Ambos tópicos tienen 3 particiones, así que la partición
+  original siempre existe en la DLT.
 
 `consumer-service` (`PedidoAlertasConsumer`): mismo esquema (`ErrorHandlingDeserializer`, 2
 reintentos, eventos inválidos → `NonRetryableException` → se registran y se saltan).
