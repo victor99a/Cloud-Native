@@ -8,7 +8,7 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 
 | Evaluación | Qué pide | Estado |
 |------------|----------|--------|
-| **EP5** (encargo, código) | Kafka: clúster 3 ZK + 3 brokers, 2 tópicos 3×3, productor/consumidores, consumer groups, DLT, admin programático, analítica en frontend | Completo (rama `feature/ep5-rubrica-100`) |
+| **EP5** (encargo, código) | Kafka: clúster 3 ZK + 3 brokers, 2 tópicos 3×3, productor/consumidores, consumer groups, DLT, admin programático, analítica en frontend | Completo — **v1.0.0** en `main` (tag `v1.0.0`) |
 | **EP6** (presentación) | Exposición oral sobre Kafka + demo en la nube: API Manager, IDaaS (tenant + usuarios), OAuth2/OIDC + JWT, API Manager valida JWT, backend/frontend desplegados, RabbitMQ 2 nodos, 3 colas + DLQ, exchanges direct/topic, docker-compose en la nube, Kafka UI 2 tópicos 3×3 | Desplegado y validado en AWS |
 
 ## Arquitectura en 1 minuto
@@ -23,6 +23,14 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 - **Mensajería**: RabbitMQ (transaccional, 3 colas + 3 DLQ, exchanges topic/direct/dlx) y
   Kafka (streaming: `pedidos360.pedidos.eventos`, `pedidos360.analitica.metricas` compactado,
   DLT `pedidos360.pedidos.eventos.dlt`).
+- **Eventos de pedido** (`PedidoEvent`): `eventId`, `tipoEvento` (`PEDIDO_CREADO`, `ESTADO_ACTUALIZADO`,
+  `PEDIDO_ELIMINADO`), `ocurridoEn` + datos del pedido. Se publican **después del commit** (RabbitMQ y Kafka).
+- **Analítica idempotente**: `analytics-service` guarda el último estado de cada pedido (`pedido_estado_actual`);
+  un cambio de estado hace -1/+1 en `metrica_pedido`, una eliminación descuenta y un `eventId` repetido se ignora.
+  Para recalcular: detener analytics, `TRUNCATE metrica_pedido, pedido_estado_actual`, resetear
+  `pedidos360-analytics-group` a `--to-earliest` y volver a arrancar (replay de Kafka).
+- **RabbitMQ**: clientes conectan a ambos nodos (`RABBITMQ_ADDRESSES`); el productor usa publisher confirms +
+  returns; consumidores con ACK manual: irrecuperable → DLQ, transitorio → 1 reintento y luego DLQ (`RechazoMensaje`).
 - **Identidad**: local = Keycloak; nube = **Amazon Cognito**. El backend acepta ambos:
   audiencia por `aud` (Keycloak) o `client_id` (Cognito); roles desde `realm_access.roles` o `cognito:groups`.
 
@@ -52,19 +60,23 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
   (`C:\Users\Victor Barrera`) → siempre `"$HOME/.ssh/labsuser.pem"` entre comillas; `aws.exe` necesita rutas `cygpath -m`.
 - Scripts `.sh` deben ir en LF (`.gitattributes`); en los hosts `deploy.sh` normaliza CRLF.
 - Zookeeper necesita `-Dzookeeper.4lw.commands.whitelist=ruok,...` para su healthcheck.
-- No hay Java/Maven/Docker locales: los tests se corren en la EC2 con `maven:3.9-eclipse-temurin-21`.
+- Java 21 y Maven sí están en el PC (`mvn clean verify` por servicio); Docker **no**: `docker compose` solo en las EC2.
 - Cambiar 1 carácter final de una firma JWT puede no invalidarla (bits de relleno base64): para probar
   rechazo, alterar el payload.
 
 ## Pendientes
 
-- PR `feature/ep5-rubrica-100` → `develop` (requiere `gh auth login` o abrirlo en GitHub).
+- Hecho: v1.0.0 (PR #17 → `develop`, PR #18 → `main`, tag y release `v1.0.0`). Detalle en `CHANGELOG.md`.
+- P2 (no bloquean): puerto 8080 de la EC2 apps abierto a internet (permite saltarse el API Gateway; requiere
+  VPC Link); DLT de métricas compartida con la de eventos; numeración `PED-NNNNNN` con `count()+1`;
+  lag "N/A" en Kafka UI para grupos sin miembros.
 - Probar login interactivo en el navegador con la URL del API Gateway.
 - Opcional: rechazar ID tokens (`token_use=id`) en gateway/BFF (hoy se aceptan).
 
 ## Convenciones
 
-- Ramas `feature/* → develop → main`; commits en español estilo conventional (`feat(...)`, `docs:`).
+- Ramas `feature/*`/`fix/* → develop → main` (vía PR con `gh`); commits en español estilo conventional;
+  releases con tag `vX.Y.Z` + `CHANGELOG.md`; desplegar desde `git archive HEAD` (no sube archivos sin trackear).
 - Nunca commitear `.env` ni credenciales.
 - Documentación: `README.md` (visión general), `docs/DESPLIEGUE_AWS.md` (nube),
   `docs/ARQUITECTURA_KAFKA.md`, `docs/GUIA_DE_ESTUDIO_EP6.md` (estudio para la presentación).
