@@ -1,6 +1,7 @@
 package com.pedidos360.consumerservice.tickets.consumer;
 
 import com.pedidos360.consumerservice.messaging.NonRetryableException;
+import com.pedidos360.consumerservice.messaging.RechazoMensaje;
 import com.rabbitmq.client.Channel;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Component;
  * la ruta de error de forma explícita:
  * <ul>
  *   <li>Error irrecuperable ({@link NonRetryableException}) -> NACK requeue=false -> DLQ.</li>
- *   <li>Error transitorio (cualquier otra excepción) -> NACK requeue=true -> reintento.</li>
+ *   <li>Error transitorio -> un reintento (requeue); si vuelve a fallar -> DLQ ({@link RechazoMensaje}).</li>
  * </ul>
  */
 @Slf4j
@@ -36,14 +37,8 @@ public class TicketConsumer {
             process(payload);
             channel.basicAck(deliveryTag, false);
             log.info("[tickets] PROCESADO_OK deliveryTag={}", deliveryTag);
-        } catch (NonRetryableException ex) {
-            log.error("[tickets] IRRECUPERABLE -> DLQ deliveryTag={} error={}",
-                    deliveryTag, ex.getMessage(), ex);
-            channel.basicNack(deliveryTag, false, false);
         } catch (Exception ex) {
-            log.warn("[tickets] Transitorio -> reintento deliveryTag={} error={}",
-                    deliveryTag, ex.getMessage());
-            channel.basicNack(deliveryTag, false, true);
+            RechazoMensaje.rechazar(channel, message, deliveryTag, ex, "tickets");
         }
     }
 

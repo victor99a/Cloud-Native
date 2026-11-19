@@ -7,7 +7,7 @@
 #   - pedidos360.pedidos.eventos   : flujo de eventos de dominio (retention 7 días,
 #                                    cleanup.policy=delete).
 #   - pedidos360.analitica.metricas: flujo de métricas agregadas (retention 30 días,
-#                                    cleanup.policy=compact).
+#                                    cleanup.policy=compact,delete).
 # También crea el tópico AUXILIAR de resiliencia (Dead Letter) para los mensajes
 # defectuosos.
 #
@@ -63,10 +63,10 @@ create_topic pedidos360.pedidos.eventos 3 3 \
   --config retention.ms=604800000 \
   --config cleanup.policy=delete
 
-echo ">> Creando tópico 'pedidos360.analitica.metricas' (3 particiones, 3 réplicas, retention 30d, compact)..."
+echo ">> Creando tópico 'pedidos360.analitica.metricas' (3 particiones, 3 réplicas, retention 30d, compact,delete)..."
 create_topic pedidos360.analitica.metricas 3 3 \
   --config retention.ms=2592000000 \
-  --config cleanup.policy=compact
+  --config cleanup.policy=compact,delete
 
 # Tópico auxiliar de resiliencia (Dead Letter): los mensajes defectuosos se
 # desvían aquí tras agotar los reintentos. No es un tópico de flujo de datos.
@@ -74,6 +74,11 @@ echo ">> Creando tópico auxiliar 'pedidos360.pedidos.eventos.dlt' (3 particione
 create_topic pedidos360.pedidos.eventos.dlt 3 3 \
   --config retention.ms=604800000 \
   --config cleanup.policy=delete
+
+# --if-not-exists no modifica tópicos ya creados: se alinea su configuración
+# para que un clúster existente quede igual que uno nuevo (idempotente).
+kafka-configs --bootstrap-server "$BOOTSTRAP" --alter --entity-type topics   --entity-name pedidos360.analitica.metricas   --add-config 'cleanup.policy=[compact,delete],retention.ms=2592000000'
+echo ">> Configuración de 'pedidos360.analitica.metricas' alineada."
 
 echo ">> Tópicos existentes en el clúster:"
 kafka-topics --bootstrap-server "$BOOTSTRAP" --list

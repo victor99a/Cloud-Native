@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class PedidoServiceImpl implements PedidoService {
@@ -81,8 +83,10 @@ public class PedidoServiceImpl implements PedidoService {
 
         pedido.recalculateTotal();
         PedidoResponse response = toResponse(pedidoRepository.save(pedido));
-        eventPublisher.publishPedidoCreado(response);
-        kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.PEDIDO_CREADO, response);
+        despuesDelCommit(() -> {
+            eventPublisher.publishPedidoCreado(response);
+            kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.PEDIDO_CREADO, response);
+        });
         return response;
     }
 
@@ -92,8 +96,10 @@ public class PedidoServiceImpl implements PedidoService {
         Pedido pedido = findEntity(id);
         pedido.setEstado(estado);
         PedidoResponse response = toResponse(pedidoRepository.save(pedido));
-        eventPublisher.publishEstadoCambiado(response);
-        kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.ESTADO_ACTUALIZADO, response);
+        despuesDelCommit(() -> {
+            eventPublisher.publishEstadoCambiado(response);
+            kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.ESTADO_ACTUALIZADO, response);
+        });
         return response;
     }
 
@@ -104,7 +110,7 @@ public class PedidoServiceImpl implements PedidoService {
         PedidoResponse snapshot = toResponse(pedido);
         pedidoRepository.delete(pedido);
         // La analítica descuenta el pedido eliminado de su estado (métricas coherentes).
-        kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.PEDIDO_ELIMINADO, snapshot);
+        despuesDelCommit(() -> kafkaEventProducer.publishPedidoEvent(TipoEventoPedido.PEDIDO_ELIMINADO, snapshot));
     }
 
     private Pedido findEntity(Long id) {
@@ -137,5 +143,24 @@ public class PedidoServiceImpl implements PedidoService {
                 pedido.getTotal(),
                 items
         );
+    }
+
+    /**
+     * Ejecuta la publicación de eventos solo si la transacción se confirma (afterCommit).
+     * Evita anunciar pedidos que finalmente no se guardaron (rollback) y que los
+     * consumidores lean un pedido que aún no es visible en la base de datos.
+     * Sin transacción activa (p. ej. pruebas unitarias) publica de inmediato.
+     */
+    private static void despuesDelCommit(Runnable publicacion) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publicacion.run();
+                }
+            });
+        } else {
+            publicacion.run();
+        }
     }
 }

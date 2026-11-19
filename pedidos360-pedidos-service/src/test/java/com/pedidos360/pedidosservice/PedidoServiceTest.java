@@ -1,5 +1,9 @@
 package com.pedidos360.pedidosservice;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -10,6 +14,8 @@ import com.pedidos360.pedidosservice.dto.request.PedidoRequest;
 import com.pedidos360.pedidosservice.entity.Producto;
 import com.pedidos360.pedidosservice.messaging.PedidoEventKafkaProducer;
 import com.pedidos360.pedidosservice.messaging.PedidoEventPublisher;
+import com.pedidos360.pedidosservice.messaging.TipoEventoPedido;
+import com.pedidos360.pedidosservice.service.PedidoService;
 import com.pedidos360.pedidosservice.repository.ProductoRepository;
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,6 +28,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -42,6 +50,12 @@ class PedidoServiceTest {
 
     @MockBean
     private PedidoEventKafkaProducer kafkaEventProducer;
+
+    @Autowired
+    private PedidoService pedidoService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Test
     void createConDosItems_calculaSubtotalYTotal() throws Exception {
@@ -73,6 +87,30 @@ class PedidoServiceTest {
                 .andExpect(jsonPath("$.items[1].cantidad").value(1))
                 .andExpect(jsonPath("$.items[1].subtotal").value(25.00))
                 .andExpect(jsonPath("$.total").value(125.00));
+
+        // Tras el commit se publica a RabbitMQ y a Kafka.
+        verify(eventPublisher).publishPedidoCreado(any());
+        verify(kafkaEventProducer).publishPedidoEvent(eq(TipoEventoPedido.PEDIDO_CREADO), any());
+    }
+
+    @Test
+    void createConRollback_noPublicaEventos() {
+        Producto a = productoRepository.save(Producto.builder()
+                .sku("SKU-ROLLBACK")
+                .nombre("Producto Rollback")
+                .precio(new BigDecimal("10.00"))
+                .build());
+        PedidoRequest pedido = new PedidoRequest("Cliente Rollback",
+                List.of(new PedidoRequest.PedidoItemRequest(a.getId(), 1)));
+
+        // La transacción externa termina en rollback: el pedido nunca existió,
+        // así que no se debe anunciar a ningún broker.
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            pedidoService.create(pedido);
+            status.setRollbackOnly();
+        });
+
+        verifyNoInteractions(eventPublisher, kafkaEventProducer);
     }
 
     @Test

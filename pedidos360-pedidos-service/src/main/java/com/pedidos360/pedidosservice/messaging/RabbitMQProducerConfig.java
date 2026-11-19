@@ -59,9 +59,11 @@ public class RabbitMQProducerConfig {
 
         // Publisher confirms: detectar publicaciones no confirmadas por el broker.
         template.setConfirmCallback((correlationData, ack, cause) -> {
-            if (!ack) {
-                log.error("[productor] Publicación NO confirmada id={} cause={}",
-                        correlationData != null ? correlationData.getId() : null, cause);
+            String id = correlationData != null ? correlationData.getId() : null;
+            if (ack) {
+                log.info("[productor] Publicación confirmada por el broker correlationId={}", id);
+            } else {
+                log.error("[productor] Publicación NO confirmada correlationId={} cause={}", id, cause);
             }
         });
         return template;
