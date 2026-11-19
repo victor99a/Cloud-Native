@@ -221,8 +221,13 @@ Además de RabbitMQ (mensajería transaccional), el sistema publica los eventos 
 
 **Flujo**
 1. `pedidos-service` → productor Kafka → `pedidos360.pedidos.eventos` (key = número de pedido).
-2. `analytics-service` (consumer group `pedidos360-analytics-group`) → agrega por estado (PostgreSQL) y
-   publica `MetricasPedidoDto` → `pedidos360.analitica.metricas` (key = estado).
+2. `analytics-service` (consumer group `pedidos360-analytics-group`) → mantiene el **estado actual de
+   cada pedido** (`pedido_estado_actual`) y agrega por estado en PostgreSQL: un cambio de estado resta 1
+   al estado anterior y suma 1 al nuevo, una eliminación descuenta, y un evento repetido (mismo
+   `eventId`) se ignora (idempotencia). Publica `MetricasPedidoDto` de cada estado afectado →
+   `pedidos360.analitica.metricas` (key = estado).
+   Cada evento (`PedidoEvent`) lleva `eventId`, `tipoEvento` (`PEDIDO_CREADO`, `ESTADO_ACTUALIZADO`,
+   `PEDIDO_ELIMINADO`) y `ocurridoEn`.
 3. `consumer-service` (group `pedidos360-alertas-group`) → lee **el mismo tópico** que analytics
    (fan-out): genera alertas en tiempo real (alto valor, cancelación, entrega).
 4. `analytics-service` (group `pedidos360-reporting-group`) → consume las métricas y mantiene la
@@ -329,10 +334,14 @@ misma `RABBITMQ_ERLANG_COOKIE` y `rabbitmq_management`), **clúster Kafka de 3 Z
 4. **DLQ** → publicar un mensaje inválido y verificar que aparece en la DLQ correspondiente.
 5. **Admin REST** →
    ```bash
+   # Crear cola, exchange y binding
    curl -X POST http://localhost:8084/api/v1/admin/queues -H "Content-Type: application/json" -d '{"name":"demo.queue"}'
-   curl -X DELETE http://localhost:8084/api/v1/admin/queues/demo.queue
    curl -X POST http://localhost:8084/api/v1/admin/exchanges -H "Content-Type: application/json" -d '{"name":"demo.exchange","type":"direct"}'
    curl -X POST http://localhost:8084/api/v1/admin/bindings -H "Content-Type: application/json" -d '{"queue":"demo.queue","exchange":"demo.exchange","routingKey":"demo"}'
+   # Eliminar binding, exchange y cola
+   curl -X DELETE http://localhost:8084/api/v1/admin/bindings -H "Content-Type: application/json" -d '{"queue":"demo.queue","exchange":"demo.exchange","routingKey":"demo"}'
+   curl -X DELETE http://localhost:8084/api/v1/admin/exchanges/demo.exchange
+   curl -X DELETE http://localhost:8084/api/v1/admin/queues/demo.queue
    ```
    (nombre vacío → HTTP 400).
 6. **Login IDaaS** → abrir el frontend y loguearse con cuenta institucional (Keycloak).

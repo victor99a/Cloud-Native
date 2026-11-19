@@ -40,12 +40,29 @@ class AlertaPedidoServiceTest {
     }
 
     @Test
+    void altoValorSoloSeAlertaAlCrear() {
+        var alertas = service.evaluar(evento("ESTADO_ACTUALIZADO", "ENVIADO", "150000"));
+
+        assertThat(alertas).isEmpty();
+    }
+
+    @Test
+    void eliminacionNoGeneraAlertas() {
+        assertThat(service.evaluar(evento("PEDIDO_ELIMINADO", "CANCELADO", "150000"))).isEmpty();
+    }
+
+    @Test
     void eventoSinEstadoEsIrrecuperable() {
         assertThatThrownBy(() -> service.evaluar(evento(" ", "5000")))
                 .isInstanceOf(NonRetryableException.class);
     }
 
     private static PedidoEventDto evento(String estado, String total) {
-        return new PedidoEventDto(1L, "PED-000001", "Cliente A", estado, new BigDecimal(total), LocalDateTime.now());
+        return evento("PEDIDO_CREADO", estado, total);
+    }
+
+    private static PedidoEventDto evento(String tipo, String estado, String total) {
+        return new PedidoEventDto("e1", tipo, 1L, "PED-000001", "Cliente A", estado,
+                new BigDecimal(total), LocalDateTime.now());
     }
 }

@@ -38,10 +38,10 @@ public class PedidoEventConsumer {
             @Header(KafkaHeaders.RECEIVED_KEY) String key,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
             @Header(KafkaHeaders.OFFSET) long offset) {
-        log.info("[analitica] recibido key={} particion={} offset={} pedidoId={} estado={}",
-                key, partition, offset, evento.pedidoId(), evento.estado());
+        log.info("[analitica] recibido key={} particion={} offset={} pedidoId={} tipo={} estado={} eventId={}",
+                key, partition, offset, evento.pedidoId(), evento.tipoEvento(), evento.estado(), evento.eventId());
 
-        var metrica = analyticsService.registrarEvento(evento);
-        metricasProducer.publicarMetrica(metrica);
+        // Se publica la métrica de CADA estado afectado (anterior y nuevo).
+        analyticsService.registrarEvento(evento).forEach(metricasProducer::publicarMetrica);
     }
 }

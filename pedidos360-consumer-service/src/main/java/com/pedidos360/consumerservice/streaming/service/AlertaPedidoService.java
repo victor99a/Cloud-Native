@@ -31,7 +31,13 @@ public class AlertaPedidoService {
         validar(evento);
 
         List<AlertaPedido> alertas = new ArrayList<>();
-        if (evento.total().compareTo(umbralAltoValor) >= 0) {
+        if (evento.esEliminacion()) {
+            // Un pedido eliminado no dispara alertas de negocio.
+            log.info("[alertas] pedido eliminado {}: sin alertas", evento.numero());
+            return alertas;
+        }
+        // El alto valor se alerta una sola vez, al crearse el pedido (no en cada cambio de estado).
+        if (evento.esCreacion() && evento.total().compareTo(umbralAltoValor) >= 0) {
             alertas.add(new AlertaPedido(TipoAlerta.ALTO_VALOR, evento.numero(),
                     "Pedido de alto valor (" + evento.total() + " >= " + umbralAltoValor + ")"));
         }
