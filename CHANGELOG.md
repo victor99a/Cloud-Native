@@ -1,6 +1,8 @@
 # Changelog — Pedidos360
 
-## Sin publicar
+## v1.1.0 — 2026-11-19
+
+Endurecimiento de la mensajería (pendientes P1 de la auditoría), desplegado y validado en AWS.
 
 ### Mensajería (P1)
 - RabbitMQ: publisher confirms y returns activados de verdad (`publisher-confirm-type: correlated`,
@@ -45,6 +47,6 @@ Primera versión estable, desplegada y validada en AWS (EP5 + EP6).
 - 46 pruebas automatizadas en los 8 microservicios (`mvn clean verify`).
 
 ### Pendientes conocidos (no bloquean la versión)
-- (Resueltos en la siguiente versión: confirms, nodos, reintentos, after-commit y política del tópico.)
+- (Resueltos en v1.1.0: confirms, nodos, reintentos, after-commit y política del tópico.)
 - Restringir el puerto 8080 de la EC2 de apps al API Gateway (VPC Link).
 - La numeración `PED-NNNNNN` usa `count()+1` y puede repetirse tras eliminar pedidos intermedios.
