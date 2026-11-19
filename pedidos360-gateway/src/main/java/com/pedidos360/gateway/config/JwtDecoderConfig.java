@@ -30,8 +30,11 @@ public class JwtDecoderConfig {
         NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(props.jwkSetUri()).build();
 
         OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(props.issuerUri());
+        // Keycloak emite el cliente en "aud"; Amazon Cognito (access token) en "client_id".
         OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
-            if (jwt.getAudience() != null && jwt.getAudience().contains(props.audience())) {
+            boolean audOk = jwt.getAudience() != null && jwt.getAudience().contains(props.audience());
+            boolean clientIdOk = props.audience().equals(jwt.getClaimAsString("client_id"));
+            if (audOk || clientIdOk) {
                 return OAuth2TokenValidatorResult.success();
             }
             return OAuth2TokenValidatorResult.failure(

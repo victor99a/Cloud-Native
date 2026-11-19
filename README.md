@@ -1,6 +1,16 @@
 # Cloud-Native — Pedidos360
 
-Proyecto **Pedidos360** — arquitectura **Cloud Native** (Angular + Spring Boot microservicios + RabbitMQ + Apache Kafka + Keycloak/IDaaS), orquestada **100% local** con Docker Compose.
+Proyecto **Pedidos360** — arquitectura **Cloud Native** (Angular + Spring Boot microservicios + RabbitMQ + Apache Kafka + IDaaS).
+
+Se ejecuta en **dos modos** con el mismo código:
+
+| Modo | IDaaS | API Manager | Cómo se levanta |
+|------|-------|-------------|-----------------|
+| 💻 **Local** | Keycloak (contenedor) | Spring Cloud Gateway | `docker compose` en `infra/apps` |
+| ☁️ **Nube (AWS)** | **Amazon Cognito** | **Amazon API Gateway** + Spring Cloud Gateway | `bash infra/aws/deploy.sh` (un comando) |
+
+> 🚀 **¿Primera vez o sesión nueva?** Lee [`docs/ESTADO_Y_CONTEXTO.md`](docs/ESTADO_Y_CONTEXTO.md).
+> 🎓 **¿Estudiando para la presentación?** Lee [`docs/GUIA_DE_ESTUDIO_EP6.md`](docs/GUIA_DE_ESTUDIO_EP6.md).
 
 ---
 
@@ -59,6 +69,84 @@ flowchart TB
 3. **API Gateway** → valida firma / issuer / audience / expiración. Token inválido → **401/403**; válido → reenvía al **BFF**.
 4. **BFF** → re-valida el JWT (defensa en profundidad), extrae los roles y enruta al microservicio correspondiente.
 5. **Eventos** → `pedidos-service` publica eventos de dominio **a la vez** en RabbitMQ (transaccional) y Kafka (streaming/analítica).
+
+---
+
+## ☁️ Arquitectura en la nube (AWS)
+
+En la nube se reemplazan dos piezas por **servicios administrados** de AWS y la plataforma se
+reparte en **dos EC2** (el Learner Lab limita a `t3.large`, 8 GB cada una):
+
+```mermaid
+flowchart TB
+    U(["👤 Navegador"])
+
+    subgraph AWS["AWS (us-east-1)"]
+        subgraph Managed["Servicios administrados"]
+            APIGW["🛡️ Amazon API Gateway<br/>HTTP API · pedidos360-api-manager<br/><b>API Manager</b>"]
+            COG["🔑 Amazon Cognito<br/>User Pool · pedidos360-tenant<br/><b>IDaaS</b> (Hosted UI + JWT)"]
+        end
+
+        subgraph APPS["EC2 pedidos360-apps (t3.large · IP elástica)"]
+            FE["frontend<br/>nginx :4200<br/>genera /config.json"]
+            SGW["gateway :8080<br/>re-valida JWT"]
+            BFF["bff<br/>JWT + roles"]
+            MS["pedidos · productos · analytics<br/>consumer · admin · kafka-admin"]
+            PG[("PostgreSQL")]
+        end
+
+        subgraph MSG["EC2 pedidos360-messaging (t3.large · IP elástica)"]
+            KAF[("Kafka<br/>3 ZK + 3 brokers")]
+            KUI["Kafka UI :8091"]
+            RAB[("RabbitMQ<br/>2 nodos :15672/:15673")]
+        end
+    end
+
+    U -->|"1 · login (OIDC + PKCE)"| COG
+    COG -.->|"2 · access token (JWT)"| U
+    U -->|"3 · GET / (sin auth)"| APIGW
+    U -->|"4 · /api/** + Bearer JWT"| APIGW
+    APIGW -->|"GET /, /{proxy+}"| FE
+    APIGW -->|"ANY /api/{proxy+}<br/>solo si el JWT es válido"| SGW
+    APIGW -.->|"descarga JWKS<br/>para validar firma"| COG
+    SGW --> BFF --> MS
+    MS --> PG
+    MS -->|"IP privada"| KAF
+    MS -->|"IP privada"| RAB
+    KUI --- KAF
+```
+
+**Cómo fluye una petición en la nube**
+
+1. El usuario abre la URL del **API Gateway**; la ruta pública `GET /` entrega el frontend.
+2. El frontend lee `/config.json` (issuer y client id de Cognito) y redirige al **Hosted UI de Cognito**.
+3. Tras el login, Cognito devuelve un `code` que el SPA canjea (PKCE) por un **access token JWT**
+   con el grupo del usuario en `cognito:groups`.
+4. Cada llamada `/api/**` lleva `Authorization: Bearer <JWT>`. El **JWT authorizer** del API Gateway
+   valida firma, issuer, audiencia y expiración: si falla responde **401** sin tocar el backend.
+5. Si es válido, reenvía a la EC2 `apps` → Spring Gateway → BFF (validan otra vez y aplican roles)
+   → microservicios → RabbitMQ / Kafka en la EC2 `messaging` por IP privada.
+
+**Decisiones clave**
+
+| Decisión | Por qué |
+|----------|---------|
+| API Gateway + Cognito administrados | Cumplen "API Manager" e "IDaaS" sin operar servidores propios |
+| Doble validación del JWT (API GW + Spring) | Defensa en profundidad: si alguien llega directo a la EC2 igual es rechazado |
+| 2 EC2 con IP elástica | Límite de tamaño del lab; las IP fijas mantienen válidas las integraciones del API Gateway entre sesiones |
+| Kafka/RabbitMQ por IP privada | Tráfico interno de la VPC, sin exponer brokers a Internet |
+| Config OIDC en tiempo de ejecución (`/config.json`) | La misma imagen del frontend sirve para cualquier cuenta: no hay IDs de AWS compilados |
+| Backend compatible Keycloak/Cognito | Audiencia por `aud` **o** `client_id`; roles desde `realm_access.roles` **o** `cognito:groups` |
+
+**Despliegue con un comando** (idempotente: crea lo que falta y reutiliza lo que existe):
+
+```bash
+bash infra/aws/deploy.sh               # cuenta nueva o cambios de código
+SKIP_CODE=1 bash infra/aws/deploy.sh   # misma cuenta, sesión nueva del lab
+bash infra/aws/destroy.sh              # borrar todo
+```
+
+Detalle de recursos y guion de demo: [`docs/DESPLIEGUE_AWS.md`](docs/DESPLIEGUE_AWS.md).
 
 ---
 
@@ -133,19 +221,33 @@ Además de RabbitMQ (mensajería transaccional), el sistema publica los eventos 
 
 **Flujo**
 1. `pedidos-service` → productor Kafka → `pedidos360.pedidos.eventos` (key = número de pedido).
-2. `analytics-service` (consumer group `pedidos360-analytics-group`) → agrega por estado (PostgreSQL) y
-   publica `MetricasPedidoDto` → `pedidos360.analitica.metricas` (key = estado).
-3. `analytics-service` (segundo group `pedidos360-reporting-group`) → consume las métricas (reportes/BI).
-4. Errores/validación → reintentos (3, backoff 1s) → Dead Letter Topic `pedidos360.pedidos.eventos.dlt`.
+2. `analytics-service` (consumer group `pedidos360-analytics-group`) → mantiene el **estado actual de
+   cada pedido** (`pedido_estado_actual`) y agrega por estado en PostgreSQL: un cambio de estado resta 1
+   al estado anterior y suma 1 al nuevo, una eliminación descuenta, y un evento repetido (mismo
+   `eventId`) se ignora (idempotencia). Publica `MetricasPedidoDto` de cada estado afectado →
+   `pedidos360.analitica.metricas` (key = estado).
+   Cada evento (`PedidoEvent`) lleva `eventId`, `tipoEvento` (`PEDIDO_CREADO`, `ESTADO_ACTUALIZADO`,
+   `PEDIDO_ELIMINADO`) y `ocurridoEn`.
+3. `consumer-service` (group `pedidos360-alertas-group`) → lee **el mismo tópico** que analytics
+   (fan-out): genera alertas en tiempo real (alto valor, cancelación, entrega).
+4. `analytics-service` (group `pedidos360-reporting-group`) → consume las métricas y mantiene la
+   vista materializada del tópico compactado (`GET /api/analitica/reporting`).
+5. Errores/validación → `ErrorHandlingDeserializer` + reintentos (3, backoff 1s) → Dead Letter Topic
+   `pedidos360.pedidos.eventos.dlt`, monitoreada por `pedidos360-dlt-monitor-group` (log contextual).
+6. El dashboard de analítica del frontend se refresca cada 3 s (indicador "En vivo").
 
 La creación de tópicos es doble (idempotente): script `infra/apps/kafka/create-topics.sh`
 (contenedor `kafka-init`) y beans `NewTopic` en `analytics-service`.
 
 **Administración programática** — `kafka-admin-service` expone:
 - `POST /api/v1/kafka/topics`, `GET /api/v1/kafka/topics`, `GET /api/v1/kafka/topics/{name}`,
-  `PUT /api/v1/kafka/topics/{name}/configs`, `DELETE /api/v1/kafka/topics/{name}`.
+  `PUT /api/v1/kafka/topics/{name}/configs`, `POST /api/v1/kafka/topics/{name}/partitions`,
+  `DELETE /api/v1/kafka/topics/{name}`.
 - `GET /api/v1/kafka/consumer-groups`, `GET /api/v1/kafka/consumer-groups/{groupId}`,
+  `GET /api/v1/kafka/consumer-groups/{groupId}/offsets` (offsets + **lag**),
+  `POST /api/v1/kafka/consumer-groups/{groupId}/offsets/reset` (earliest/latest),
   `DELETE /api/v1/kafka/consumer-groups/{groupId}`.
+- `GET /api/v1/kafka/cluster` (brokers activos y controlador).
 
 > ℹ️ La creación de tópicos por defecto usa **3 particiones y 3 réplicas** (tolerancia a fallos
 > + paralelismo). Puedes alterar `retention.ms` y `cleanup.policy` con `PUT .../configs`.
@@ -166,6 +268,11 @@ Los microservicios *downstream* (`pedidos`, `productos`, `analytics`) y los *adm
 componentes internos que solo reciben tráfico del BFF o de la red de Docker Compose. En un
 entorno productivo quedarían **detrás del API Manager** o con aislamiento de red; para la
 demo local se exponen en puertos de host solo para facilitar la verificación con `curl`.
+
+**En la nube** se agrega una capa más adelante: el **JWT authorizer de Amazon API Gateway**
+rechaza con 401 cualquier petición `/api/**` sin token válido de Cognito **antes** de llegar a
+la EC2. Gateway y BFF aceptan tokens de Keycloak (claim `aud`) o de Cognito (claim
+`client_id`), y leen los roles de `realm_access.roles` o `cognito:groups`.
 
 ---
 
@@ -227,10 +334,14 @@ misma `RABBITMQ_ERLANG_COOKIE` y `rabbitmq_management`), **clúster Kafka de 3 Z
 4. **DLQ** → publicar un mensaje inválido y verificar que aparece en la DLQ correspondiente.
 5. **Admin REST** →
    ```bash
+   # Crear cola, exchange y binding
    curl -X POST http://localhost:8084/api/v1/admin/queues -H "Content-Type: application/json" -d '{"name":"demo.queue"}'
-   curl -X DELETE http://localhost:8084/api/v1/admin/queues/demo.queue
    curl -X POST http://localhost:8084/api/v1/admin/exchanges -H "Content-Type: application/json" -d '{"name":"demo.exchange","type":"direct"}'
    curl -X POST http://localhost:8084/api/v1/admin/bindings -H "Content-Type: application/json" -d '{"queue":"demo.queue","exchange":"demo.exchange","routingKey":"demo"}'
+   # Eliminar binding, exchange y cola
+   curl -X DELETE http://localhost:8084/api/v1/admin/bindings -H "Content-Type: application/json" -d '{"queue":"demo.queue","exchange":"demo.exchange","routingKey":"demo"}'
+   curl -X DELETE http://localhost:8084/api/v1/admin/exchanges/demo.exchange
+   curl -X DELETE http://localhost:8084/api/v1/admin/queues/demo.queue
    ```
    (nombre vacío → HTTP 400).
 6. **Login IDaaS** → abrir el frontend y loguearse con cuenta institucional (Keycloak).
@@ -252,10 +363,29 @@ misma `RABBITMQ_ERLANG_COOKIE` y `rabbitmq_management`), **clúster Kafka de 3 Z
    curl -X GET http://localhost:8087/api/v1/kafka/topics
    curl -X DELETE http://localhost:8087/api/v1/kafka/topics/demo.topic
    curl -X GET http://localhost:8087/api/v1/kafka/consumer-groups
+   curl -X GET http://localhost:8087/api/v1/kafka/consumer-groups/pedidos360-analytics-group/offsets
+   curl -X POST http://localhost:8087/api/v1/kafka/topics/demo.topic/partitions -H "Content-Type: application/json" \
+     -d '{"totalPartitions":6}'
+   curl -X GET http://localhost:8087/api/v1/kafka/cluster
    ```
+6. **Poison pill → DLT** (JSON inválido, no bloquea la partición):
+   ```bash
+   docker exec -it infra-apps-kafka1-1 kafka-console-producer --bootstrap-server localhost:29092 \
+     --topic pedidos360.pedidos.eventos --property parse.key=true --property key.separator=:
+   # escribir:  PED-X:esto no es json
+   ```
+   y ver en los logs de `analytics-service` la línea `[dlt-monitor] MENSAJE EN DLT ...`.
+7. **Fan-out entre microservicios** → crear un pedido y ver el mismo evento en los logs de
+   `analytics-service` (`[analitica]`) y de `consumer-service` (`[alertas]`).
 
 ## 📖 Documentación
 
+- [`docs/ESTADO_Y_CONTEXTO.md`](docs/ESTADO_Y_CONTEXTO.md) — **empezar aquí**: estado actual,
+  checklist del día de la presentación y problemas frecuentes.
+- [`docs/GUIA_DE_ESTUDIO_EP6.md`](docs/GUIA_DE_ESTUDIO_EP6.md) — guía didáctica de la
+  arquitectura en la nube (API Manager, IDaaS, OAuth2/OIDC, JWT, Kafka) con flujos y diagramas.
+- [`docs/DESPLIEGUE_AWS.md`](docs/DESPLIEGUE_AWS.md) — despliegue en AWS (API Gateway como API
+  Manager, Cognito como IDaaS, 2 EC2 con Docker Compose) y guion de demo de la EP6.
 - [`docs/GUIA_DE_ESTUDIO_EP5.md`](docs/GUIA_DE_ESTUDIO_EP5.md) — **guía desde cero** con
   analogías, diagramas y autoevaluación (ideal para estudiar y defender la arquitectura).
 - [`docs/ARQUITECTURA_KAFKA.md`](docs/ARQUITECTURA_KAFKA.md) — explicación técnica de

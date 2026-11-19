@@ -13,6 +13,7 @@ public record KafkaProperties(
         String topicAnaliticaMetricas,
         String topicPedidosEventosDlt,
         String consumerGroupAnalytics,
-        String consumerGroupReporting
+        String consumerGroupReporting,
+        String consumerGroupDltMonitor
 ) {
 }

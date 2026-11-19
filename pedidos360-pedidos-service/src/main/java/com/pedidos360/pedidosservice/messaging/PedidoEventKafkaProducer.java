@@ -25,30 +25,19 @@ public class PedidoEventKafkaProducer {
         this.props = props;
     }
 
-    public void publishPedidoEvent(PedidoResponse pedido) {
-        PedidoEvent event = toEvent(pedido);
+    public void publishPedidoEvent(TipoEventoPedido tipo, PedidoResponse pedido) {
+        PedidoEvent event = PedidoEvent.of(tipo, pedido);
         kafkaTemplate.send(props.topicPedidosEventos(), pedido.numero(), event)
                 .whenComplete((SendResult<String, PedidoEvent> result, Throwable ex) -> {
                     if (ex != null) {
-                        log.error("[kafka-producer] fallo al publicar pedido {} error={}",
-                                pedido.numero(), ex.getMessage(), ex);
+                        log.error("[kafka-producer] fallo al publicar pedido={} tipo={} eventId={} error={}",
+                                pedido.numero(), tipo, event.eventId(), ex.getMessage(), ex);
                     } else {
-                        log.info("[kafka-producer] publicado pedido={} estado={} particion={} offset={}",
-                                pedido.numero(), pedido.estado(),
+                        log.info("[kafka-producer] publicado pedido={} tipo={} estado={} eventId={} particion={} offset={}",
+                                pedido.numero(), tipo, pedido.estado(), event.eventId(),
                                 result.getRecordMetadata() != null ? result.getRecordMetadata().partition() : -1,
                                 result.getRecordMetadata() != null ? result.getRecordMetadata().offset() : -1);
                     }
                 });
-    }
-
-    private PedidoEvent toEvent(PedidoResponse pedido) {
-        return new PedidoEvent(
-                pedido.id(),
-                pedido.numero(),
-                pedido.cliente(),
-                pedido.estado().name(),
-                pedido.total(),
-                pedido.fecha()
-        );
     }
 }

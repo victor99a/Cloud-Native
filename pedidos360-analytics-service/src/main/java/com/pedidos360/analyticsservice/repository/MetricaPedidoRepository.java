@@ -17,20 +17,22 @@ public interface MetricaPedidoRepository extends JpaRepository<MetricaPedido, Lo
     Optional<MetricaPedido> findByEstado(String estado);
 
     /**
-     * Upsert atómico a nivel de base de datos (PostgreSQL). Con varios consumidores
-     * repartiéndose las particiones, la concurrencia se resuelve con
-     * {@code ON CONFLICT (estado)} en lugar de leer-modificar-escribir en la JVM.
+     * Ajuste atómico (upsert) de la métrica de un estado sumando deltas (+1/-1 pedidos,
+     * +/- monto). Con varios consumidores repartiéndose las particiones, la
+     * concurrencia se resuelve con {@code ON CONFLICT (estado)} en PostgreSQL en lugar
+     * de leer-modificar-escribir en la JVM.
      */
     @Modifying
     @Query(value = """
             INSERT INTO metrica_pedido (estado, total_pedidos, total_vendido, ultima_actualizacion)
-            VALUES (:estado, 1, :total, :fecha)
+            VALUES (:estado, :deltaPedidos, :deltaTotal, :fecha)
             ON CONFLICT (estado) DO UPDATE
-            SET total_pedidos = metrica_pedido.total_pedidos + 1,
+            SET total_pedidos = metrica_pedido.total_pedidos + EXCLUDED.total_pedidos,
                 total_vendido = metrica_pedido.total_vendido + EXCLUDED.total_vendido,
                 ultima_actualizacion = EXCLUDED.ultima_actualizacion
             """, nativeQuery = true)
-    void increment(@Param("estado") String estado,
-                   @Param("total") BigDecimal total,
-                   @Param("fecha") LocalDateTime fecha);
+    void ajustar(@Param("estado") String estado,
+                 @Param("deltaPedidos") long deltaPedidos,
+                 @Param("deltaTotal") BigDecimal deltaTotal,
+                 @Param("fecha") LocalDateTime fecha);
 }

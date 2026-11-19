@@ -13,6 +13,9 @@ spring:
       simple:
         acknowledge-mode: manual
         prefetch: 1
+  kafka:
+    # Cliente Kafka del consumidor de alertas (fan-out del tópico de eventos de pedidos).
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 # Nombres de colas, exchanges, DLX y routing keys centralizados (cero hardcoding).
 pedidos360:
@@ -29,6 +32,13 @@ pedidos360:
     routing-pedido-creado: pedido.creado
     routing-pedido-todos: "pedido.#"
     routing-pedido-entregado: pedido.estado.entregado
+  kafka:
+    # Mismo tópico que consume analytics-service, pero con OTRO consumer group:
+    # ambos grupos reciben TODOS los eventos (fan-out / publish-subscribe).
+    topic-pedidos-eventos: pedidos360.pedidos.eventos
+    consumer-group-alertas: pedidos360-alertas-group
+    # Monto a partir del cual un pedido se considera de alto valor (alerta).
+    umbral-alto-valor: 100000
 
 management:
   endpoints:

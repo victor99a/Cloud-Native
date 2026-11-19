@@ -29,7 +29,7 @@ spring:
         enable.idempotence: true
     consumer:
       # Los consumidores se configuran de forma programática en KafkaConsumerConfig
-      # (deserializador JSON tipado + ACK manual vía DefaultErrorHandler).
+      # (ErrorHandlingDeserializer + JSON tipado, commit por registro, reintentos y DLT).
       auto-offset-reset: earliest
 
 # Nombres de tópicos, grupos y DLT centralizados (cero hardcoding en código).
@@ -40,6 +40,7 @@ pedidos360:
     topic-pedidos-eventos-dlt: pedidos360.pedidos.eventos.dlt
     consumer-group-analytics: pedidos360-analytics-group
     consumer-group-reporting: pedidos360-reporting-group
+    consumer-group-dlt-monitor: pedidos360-dlt-monitor-group
 
 management:
   endpoints:

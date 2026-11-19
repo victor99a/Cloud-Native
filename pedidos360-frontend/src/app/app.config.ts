@@ -4,32 +4,18 @@ import {
   provideZoneChangeDetection,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import {
-  HTTP_INTERCEPTORS,
-  provideHttpClient,
-  withInterceptors,
-  withInterceptorsFromDi,
-} from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { KeycloakBearerInterceptor, KeycloakService } from 'keycloak-angular';
+import { provideOAuthClient } from 'angular-oauth2-oidc';
 import { routes } from './app.routes';
-import { keycloakConfig, keycloakInitOptions } from './core/auth/keycloak-config';
+import { AuthService } from './core/auth/auth.service';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { httpErrorInterceptor } from './core/interceptors/http-error.interceptor';
 
-/**
- * Inicializa Keycloak antes de arrancar la aplicación (check-sso).
- * keycloak-angular v16 expone la API clásica (KeycloakService.init), no
- * provideKeycloak (que es de v19+).
- */
-function initializeKeycloak(keycloak: KeycloakService): () => Promise<boolean> {
-  return () =>
-    keycloak.init({
-      config: keycloakConfig,
-      initOptions: keycloakInitOptions,
-      enableBearerInterceptor: true,
-      loadUserProfileAtStartUp: false,
-    });
+/** Inicializa el cliente OIDC (Cognito / Keycloak) antes de arrancar la app. */
+function initializeAuth(auth: AuthService): () => Promise<void> {
+  return () => auth.init();
 }
 
 export const appConfig: ApplicationConfig = {
@@ -37,22 +23,12 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
-    provideHttpClient(
-      withInterceptors([loadingInterceptor, httpErrorInterceptor]),
-      withInterceptorsFromDi(),
-    ),
-    // Servicio de autenticación de keycloak-angular (no es providedIn: 'root').
-    KeycloakService,
-    // Interceptor que adjunta el Bearer token a las peticiones HTTP salientes.
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: KeycloakBearerInterceptor,
-      multi: true,
-    },
+    provideHttpClient(withInterceptors([authInterceptor, loadingInterceptor, httpErrorInterceptor])),
+    provideOAuthClient(),
     {
       provide: APP_INITIALIZER,
-      useFactory: initializeKeycloak,
-      deps: [KeycloakService],
+      useFactory: initializeAuth,
+      deps: [AuthService],
       multi: true,
     },
   ],

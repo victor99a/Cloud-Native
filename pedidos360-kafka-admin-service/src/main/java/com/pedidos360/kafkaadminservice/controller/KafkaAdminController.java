@@ -1,6 +1,10 @@
 package com.pedidos360.kafkaadminservice.controller;
 
+import com.pedidos360.kafkaadminservice.dto.ClusterInfo;
 import com.pedidos360.kafkaadminservice.dto.ConsumerGroupInfo;
+import com.pedidos360.kafkaadminservice.dto.ConsumerGroupOffsets;
+import com.pedidos360.kafkaadminservice.dto.OffsetResetRequest;
+import com.pedidos360.kafkaadminservice.dto.PartitionsRequest;
 import com.pedidos360.kafkaadminservice.dto.TopicConfigRequest;
 import com.pedidos360.kafkaadminservice.dto.TopicInfo;
 import com.pedidos360.kafkaadminservice.dto.TopicRequest;
@@ -62,10 +66,24 @@ public class KafkaAdminController {
         return ResponseEntity.ok(Map.of("topic", name, "status", "updated"));
     }
 
+    @PostMapping("/topics/{name}/partitions")
+    public TopicInfo increasePartitions(
+            @PathVariable @NotBlank String name,
+            @Valid @RequestBody PartitionsRequest request) {
+        return adminService.increasePartitions(name, request);
+    }
+
     @DeleteMapping("/topics/{name}")
     public ResponseEntity<Void> deleteTopic(@PathVariable @NotBlank String name) {
         adminService.deleteTopic(name);
         return ResponseEntity.noContent().build();
+    }
+
+    // ===== Clúster =====
+
+    @GetMapping("/cluster")
+    public ClusterInfo describeCluster() {
+        return adminService.describeCluster();
     }
 
     // ===== Consumer groups =====
@@ -78,6 +96,20 @@ public class KafkaAdminController {
     @GetMapping("/consumer-groups/{groupId}")
     public ConsumerGroupInfo describeConsumerGroup(@PathVariable @NotBlank String groupId) {
         return adminService.describeConsumerGroup(groupId);
+    }
+
+    /** Offsets confirmados, log-end offset y lag por partición del grupo. */
+    @GetMapping("/consumer-groups/{groupId}/offsets")
+    public ConsumerGroupOffsets consumerGroupOffsets(@PathVariable @NotBlank String groupId) {
+        return adminService.consumerGroupOffsets(groupId);
+    }
+
+    /** Reposiciona offsets del grupo (earliest/latest) en un tópico; el grupo debe estar inactivo. */
+    @PostMapping("/consumer-groups/{groupId}/offsets/reset")
+    public ConsumerGroupOffsets resetConsumerGroupOffsets(
+            @PathVariable @NotBlank String groupId,
+            @Valid @RequestBody OffsetResetRequest request) {
+        return adminService.resetConsumerGroupOffsets(groupId, request);
     }
 
     @DeleteMapping("/consumer-groups/{groupId}")

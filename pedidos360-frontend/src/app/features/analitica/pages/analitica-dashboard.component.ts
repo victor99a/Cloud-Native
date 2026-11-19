@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
@@ -16,6 +16,18 @@ import { AnaliticaStoreService } from '../services/analitica-store.service';
         <div>
           <h1 class="page-title">Analítica de pedidos</h1>
           <p class="page-subtitle">Métricas agregadas en tiempo real desde Kafka.</p>
+        </div>
+        <div class="live">
+          <span class="live-dot" [class.live-dot--paused]="!enVivo()" aria-hidden="true"></span>
+          <span class="live-text">
+            {{ enVivo() ? 'En vivo' : 'Pausado' }}
+            @if (store.ultimaSincronizacion(); as fecha) {
+              · actualizado {{ fecha | date: 'HH:mm:ss' }}
+            }
+          </span>
+          <button type="button" class="live-btn" (click)="alternarEnVivo()">
+            {{ enVivo() ? 'Pausar' : 'Reanudar' }}
+          </button>
         </div>
       </header>
 
@@ -133,13 +145,92 @@ import { AnaliticaStoreService } from '../services/analitica-store.service';
     .table-wrap {
       margin-top: 8px;
     }
+
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .live-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--color-success);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    .live-dot--paused {
+      background: var(--color-text-muted);
+      animation: none;
+    }
+
+    .live-text {
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    .live-btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .live-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
   `,
 })
-export class AnaliticaDashboardComponent implements OnInit {
+export class AnaliticaDashboardComponent implements OnInit, OnDestroy {
+  /** Intervalo de refresco: el consumidor Kafka actualiza la BD casi al instante. */
+  private static readonly REFRESCO_MS = 3000;
+
   readonly store = inject(AnaliticaStoreService);
+  readonly enVivo = signal(true);
+  private intervalo: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     this.store.cargar();
+    this.iniciarRefresco();
+  }
+
+  ngOnDestroy(): void {
+    this.detenerRefresco();
+  }
+
+  alternarEnVivo(): void {
+    if (this.enVivo()) {
+      this.detenerRefresco();
+      this.enVivo.set(false);
+    } else {
+      this.store.cargar(true);
+      this.iniciarRefresco();
+      this.enVivo.set(true);
+    }
+  }
+
+  private iniciarRefresco(): void {
+    this.detenerRefresco();
+    this.intervalo = setInterval(() => this.store.cargar(true), AnaliticaDashboardComponent.REFRESCO_MS);
+  }
+
+  private detenerRefresco(): void {
+    if (this.intervalo !== null) {
+      clearInterval(this.intervalo);
+      this.intervalo = null;
+    }
   }
 
   totalPedidos = computed(() => this.store.metricas().reduce((suma, m) => suma + m.totalPedidos, 0));

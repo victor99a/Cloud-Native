@@ -9,17 +9,27 @@ export class AnaliticaStoreService {
   private readonly _metricas = signal<MetricaAnalitica[]>([]);
   private readonly _isLoading = signal(false);
   private readonly _error = signal<string | null>(null);
+  private readonly _ultimaSincronizacion = signal<Date | null>(null);
 
   readonly metricas = this._metricas.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly ultimaSincronizacion = this._ultimaSincronizacion.asReadonly();
 
-  cargar(): void {
-    this._isLoading.set(true);
-    this._error.set(null);
+  /**
+   * Carga el resumen de métricas.
+   * @param silencioso si es true (refresco automático) no muestra el loader,
+   *                   para que la vista se actualice sin parpadeos.
+   */
+  cargar(silencioso = false): void {
+    if (!silencioso) {
+      this._isLoading.set(true);
+    }
     this.api.get<MetricaAnalitica[]>('/analitica/resumen').subscribe({
       next: (metricas) => {
         this._metricas.set(metricas);
+        this._error.set(null);
+        this._ultimaSincronizacion.set(new Date());
         this._isLoading.set(false);
       },
       error: () => {
