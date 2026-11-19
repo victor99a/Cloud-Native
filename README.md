@@ -217,7 +217,7 @@ Además de RabbitMQ (mensajería transaccional), el sistema publica los eventos 
 | Tópico | Uso | retention.ms | cleanup.policy |
 |--------|-----|--------------|----------------|
 | `pedidos360.pedidos.eventos` | Eventos de dominio (pedido creado / cambio de estado) | 7 días | `delete` |
-| `pedidos360.analitica.metricas` | Métricas agregadas por estado | 30 días | `compact` |
+| `pedidos360.analitica.metricas` | Métricas agregadas por estado | 30 días | `compact,delete` |
 
 **Flujo**
 1. `pedidos-service` → productor Kafka → `pedidos360.pedidos.eventos` (key = número de pedido).

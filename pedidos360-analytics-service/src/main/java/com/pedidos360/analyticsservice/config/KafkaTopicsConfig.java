@@ -35,7 +35,7 @@ public class KafkaTopicsConfig {
                 .replicas(3)
                 .configs(Map.of(
                         "retention.ms", "2592000000", // 30 días
-                        "cleanup.policy", "compact")) // conserva el último valor por clave (estado)
+                        "cleanup.policy", "compact,delete")) // último valor por clave (estado) y borrado tras 30 días
                 .build();
     }
 

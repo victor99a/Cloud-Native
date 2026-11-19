@@ -25,7 +25,7 @@ escritura con `acks=all` solo se confirma cuando al menos 2 réplicas ISR la han
 | Tópico | Particiones | Réplicas | retention.ms | cleanup.policy | Motivo |
 |--------|-------------|----------|--------------|----------------|--------|
 | `pedidos360.pedidos.eventos` | 3 | 3 | 7 días (604800000) | `delete` | Flujo de eventos de dominio: retención acotada para no crecer indefinidamente. |
-| `pedidos360.analitica.metricas` | 3 | 3 | 30 días (2592000000) | `compact` | Métricas por clave (`estado`): se conserva el último valor por clave. |
+| `pedidos360.analitica.metricas` | 3 | 3 | 30 días (2592000000) | `compact,delete` | Métricas por clave (`estado`): se conserva el último valor por clave. |
 
 La creación es **idempotente y doble**:
 - Script `infra/apps/kafka/create-topics.sh` (contenedor one-shot `kafka-init`).

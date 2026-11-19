@@ -1,6 +1,7 @@
 package com.pedidos360.consumerservice.notifications.consumer;
 
 import com.pedidos360.consumerservice.messaging.NonRetryableException;
+import com.pedidos360.consumerservice.messaging.RechazoMensaje;
 import com.rabbitmq.client.Channel;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Component;
  * y decide de forma explícita la ruta de error:
  * <ul>
  *   <li>Error irrecuperable ({@link NonRetryableException}) -> NACK requeue=false -> DLQ.</li>
- *   <li>Error transitorio (cualquier otra excepción) -> NACK requeue=true -> reintento.</li>
+ *   <li>Error transitorio -> un reintento (requeue); si vuelve a fallar -> DLQ ({@link RechazoMensaje}).</li>
  * </ul>
  */
 @Slf4j
@@ -36,16 +37,8 @@ public class NotificationConsumer {
             process(payload);
             channel.basicAck(deliveryTag, false);
             log.info("[notificaciones] PROCESADO_OK deliveryTag={}", deliveryTag);
-        } catch (NonRetryableException ex) {
-            // Error permanente (poison message): nunca podrá procesarse -> DLQ.
-            log.error("[notificaciones] IRRECUPERABLE -> DLQ deliveryTag={} error={}",
-                    deliveryTag, ex.getMessage(), ex);
-            channel.basicNack(deliveryTag, false, false);
         } catch (Exception ex) {
-            // Error transitorio: se reintenta devolviendo el mensaje a la cola (requeue).
-            log.warn("[notificaciones] Transitorio -> reintento deliveryTag={} error={}",
-                    deliveryTag, ex.getMessage());
-            channel.basicNack(deliveryTag, false, true);
+            RechazoMensaje.rechazar(channel, message, deliveryTag, ex, "notificaciones");
         }
     }
 

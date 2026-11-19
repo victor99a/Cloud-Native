@@ -16,8 +16,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
+    # Lista de nodos del clúster: si un nodo cae, el cliente reconecta al otro.
+    addresses: ${RABBITMQ_ADDRESSES:${RABBITMQ_HOST:localhost}:${RABBITMQ_PORT:5672}}
+    # Activa los callbacks del RabbitTemplate: confirmación del broker (ack/nack)
+    # por mensaje y devolución de mensajes sin ruta (mandatory).
+    publisher-confirm-type: correlated
+    publisher-returns: true
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
   kafka:
