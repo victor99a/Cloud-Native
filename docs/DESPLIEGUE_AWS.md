@@ -35,21 +35,36 @@ EC2 "pedidos360-messaging" (t3.large) : 3 Zookeeper + 3 brokers Kafka + Kafka UI
 Las **IPs elásticas** mantienen las direcciones públicas fijas entre sesiones del lab, así las
 integraciones del API Gateway no se rompen al reiniciar.
 
-## Volver a levantar todo antes de presentar
+> Los IDs de esta tabla corresponden a la cuenta usada al validar. En otra cuenta los
+> genera `deploy.sh` y los muestra al final.
 
-1. Iniciar el Learner Lab y copiar las credenciales nuevas a `~/.aws/credentials`.
-2. Las EC2 arrancan solas con el lab. Si están detenidas:
-   `aws ec2 start-instances --instance-ids i-0b30bbb7068807090 i-0890dc45c3a3a3adc`
-3. Los contenedores tienen `restart: unless-stopped`, así que vuelven solos. Para verificar:
+## Volver a levantar todo (un solo comando)
+
+Todo el despliegue está automatizado y es **idempotente** en `infra/aws/deploy.sh`:
+crea lo que falta, reutiliza lo que existe y termina con una verificación de punta a punta.
+
+1. Iniciar el Learner Lab → **AWS Details** → copiar el bloque *AWS CLI* en `~/.aws/credentials`
+   (y, si es otra cuenta, descargar el **PEM** a `~/.ssh/labsuser.pem`).
+2. Desde la raíz del repo, en Git Bash:
    ```bash
-   ssh -i ~/.ssh/labsuser.pem ec2-user@44.213.34.232 \
-     'cd ~/pedidos360/infra/aws && docker compose -f docker-compose.messaging.yml ps'
-   ssh -i ~/.ssh/labsuser.pem ec2-user@52.45.200.182 \
-     'cd ~/pedidos360/infra/aws && docker compose -f docker-compose.apps.yml ps'
+   bash infra/aws/deploy.sh               # cuenta nueva o cambios de código (~10-15 min)
+   SKIP_CODE=1 bash infra/aws/deploy.sh   # misma cuenta, sesión nueva: solo enciende y verifica (~1 min)
    ```
-   Si algo no está arriba: `docker compose -f <archivo> --env-file .env up -d` (primero
-   `messaging`, luego `apps`).
-4. Si cambió tu IP pública, actualiza el security group para SSH / Kafka UI / RabbitMQ UI.
+3. El script imprime la URL del API Manager, los usuarios y las URLs de Kafka UI / RabbitMQ.
+
+Qué resuelve solo:
+
+| Caso | Qué hace el script |
+|------|--------------------|
+| Sesión nueva, misma cuenta | Enciende EC2 detenidas, agrega tu IP actual al security group, verifica 401/200 |
+| Otra cuenta / otro taller | Crea SG, 2 EC2 + IPs elásticas, Cognito (pool, dominio, client, grupos, usuarios), API Gateway (authorizer JWT, integraciones, rutas), sube el código, genera `.env` y levanta todo |
+| Cambios de código | Re-sube el código y reconstruye las imágenes, conservando las claves del `.env` |
+
+El frontend **no tiene IDs de AWS compilados**: nginx genera `/config.json` al arrancar
+desde variables de entorno (`AUTH_ISSUER`, `AUTH_CLIENT_ID`, `AUTH_LOGOUT_URL`), así que
+la misma imagen sirve en cualquier cuenta.
+
+Para borrar todo: `bash infra/aws/destroy.sh` (pide confirmación).
 
 ## Guion de demo (rúbrica EP6)
 

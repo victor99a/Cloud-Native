@@ -126,11 +126,14 @@ services:
     ports: ["8080:8080"]
     depends_on: [bff]
 
+  # La imagen es la misma para cualquier cuenta: nginx genera /config.json al arrancar.
   frontend:
-    build:
-      context: ../../pedidos360-frontend
-      args:
-        BUILD_CONFIGURATION: aws
+    build: { context: ../../pedidos360-frontend }
+    environment:
+      API_BASE_URL: ""               # mismo origen que el API Gateway (/api/...)
+      AUTH_ISSUER: ${JWT_ISSUER_URI}
+      AUTH_CLIENT_ID: ${JWT_AUDIENCE}
+      AUTH_LOGOUT_URL: ${COGNITO_DOMAIN_URL}/logout?client_id=${JWT_AUDIENCE}&logout_uri=
     ports: ["4200:80"]
     restart: unless-stopped
 

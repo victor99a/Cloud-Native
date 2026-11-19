@@ -1,6 +1,16 @@
 # Cloud-Native — Pedidos360
 
-Proyecto **Pedidos360** — arquitectura **Cloud Native** (Angular + Spring Boot microservicios + RabbitMQ + Apache Kafka + Keycloak/IDaaS), orquestada **100% local** con Docker Compose.
+Proyecto **Pedidos360** — arquitectura **Cloud Native** (Angular + Spring Boot microservicios + RabbitMQ + Apache Kafka + IDaaS).
+
+Se ejecuta en **dos modos** con el mismo código:
+
+| Modo | IDaaS | API Manager | Cómo se levanta |
+|------|-------|-------------|-----------------|
+| 💻 **Local** | Keycloak (contenedor) | Spring Cloud Gateway | `docker compose` en `infra/apps` |
+| ☁️ **Nube (AWS)** | **Amazon Cognito** | **Amazon API Gateway** + Spring Cloud Gateway | `bash infra/aws/deploy.sh` (un comando) |
+
+> 🚀 **¿Primera vez o sesión nueva?** Lee [`docs/ESTADO_Y_CONTEXTO.md`](docs/ESTADO_Y_CONTEXTO.md).
+> 🎓 **¿Estudiando para la presentación?** Lee [`docs/GUIA_DE_ESTUDIO_EP6.md`](docs/GUIA_DE_ESTUDIO_EP6.md).
 
 ---
 
@@ -59,6 +69,84 @@ flowchart TB
 3. **API Gateway** → valida firma / issuer / audience / expiración. Token inválido → **401/403**; válido → reenvía al **BFF**.
 4. **BFF** → re-valida el JWT (defensa en profundidad), extrae los roles y enruta al microservicio correspondiente.
 5. **Eventos** → `pedidos-service` publica eventos de dominio **a la vez** en RabbitMQ (transaccional) y Kafka (streaming/analítica).
+
+---
+
+## ☁️ Arquitectura en la nube (AWS)
+
+En la nube se reemplazan dos piezas por **servicios administrados** de AWS y la plataforma se
+reparte en **dos EC2** (el Learner Lab limita a `t3.large`, 8 GB cada una):
+
+```mermaid
+flowchart TB
+    U(["👤 Navegador"])
+
+    subgraph AWS["AWS (us-east-1)"]
+        subgraph Managed["Servicios administrados"]
+            APIGW["🛡️ Amazon API Gateway<br/>HTTP API · pedidos360-api-manager<br/><b>API Manager</b>"]
+            COG["🔑 Amazon Cognito<br/>User Pool · pedidos360-tenant<br/><b>IDaaS</b> (Hosted UI + JWT)"]
+        end
+
+        subgraph APPS["EC2 pedidos360-apps (t3.large · IP elástica)"]
+            FE["frontend<br/>nginx :4200<br/>genera /config.json"]
+            SGW["gateway :8080<br/>re-valida JWT"]
+            BFF["bff<br/>JWT + roles"]
+            MS["pedidos · productos · analytics<br/>consumer · admin · kafka-admin"]
+            PG[("PostgreSQL")]
+        end
+
+        subgraph MSG["EC2 pedidos360-messaging (t3.large · IP elástica)"]
+            KAF[("Kafka<br/>3 ZK + 3 brokers")]
+            KUI["Kafka UI :8091"]
+            RAB[("RabbitMQ<br/>2 nodos :15672/:15673")]
+        end
+    end
+
+    U -->|"1 · login (OIDC + PKCE)"| COG
+    COG -.->|"2 · access token (JWT)"| U
+    U -->|"3 · GET / (sin auth)"| APIGW
+    U -->|"4 · /api/** + Bearer JWT"| APIGW
+    APIGW -->|"GET /, /{proxy+}"| FE
+    APIGW -->|"ANY /api/{proxy+}<br/>solo si el JWT es válido"| SGW
+    APIGW -.->|"descarga JWKS<br/>para validar firma"| COG
+    SGW --> BFF --> MS
+    MS --> PG
+    MS -->|"IP privada"| KAF
+    MS -->|"IP privada"| RAB
+    KUI --- KAF
+```
+
+**Cómo fluye una petición en la nube**
+
+1. El usuario abre la URL del **API Gateway**; la ruta pública `GET /` entrega el frontend.
+2. El frontend lee `/config.json` (issuer y client id de Cognito) y redirige al **Hosted UI de Cognito**.
+3. Tras el login, Cognito devuelve un `code` que el SPA canjea (PKCE) por un **access token JWT**
+   con el grupo del usuario en `cognito:groups`.
+4. Cada llamada `/api/**` lleva `Authorization: Bearer <JWT>`. El **JWT authorizer** del API Gateway
+   valida firma, issuer, audiencia y expiración: si falla responde **401** sin tocar el backend.
+5. Si es válido, reenvía a la EC2 `apps` → Spring Gateway → BFF (validan otra vez y aplican roles)
+   → microservicios → RabbitMQ / Kafka en la EC2 `messaging` por IP privada.
+
+**Decisiones clave**
+
+| Decisión | Por qué |
+|----------|---------|
+| API Gateway + Cognito administrados | Cumplen "API Manager" e "IDaaS" sin operar servidores propios |
+| Doble validación del JWT (API GW + Spring) | Defensa en profundidad: si alguien llega directo a la EC2 igual es rechazado |
+| 2 EC2 con IP elástica | Límite de tamaño del lab; las IP fijas mantienen válidas las integraciones del API Gateway entre sesiones |
+| Kafka/RabbitMQ por IP privada | Tráfico interno de la VPC, sin exponer brokers a Internet |
+| Config OIDC en tiempo de ejecución (`/config.json`) | La misma imagen del frontend sirve para cualquier cuenta: no hay IDs de AWS compilados |
+| Backend compatible Keycloak/Cognito | Audiencia por `aud` **o** `client_id`; roles desde `realm_access.roles` **o** `cognito:groups` |
+
+**Despliegue con un comando** (idempotente: crea lo que falta y reutiliza lo que existe):
+
+```bash
+bash infra/aws/deploy.sh               # cuenta nueva o cambios de código
+SKIP_CODE=1 bash infra/aws/deploy.sh   # misma cuenta, sesión nueva del lab
+bash infra/aws/destroy.sh              # borrar todo
+```
+
+Detalle de recursos y guion de demo: [`docs/DESPLIEGUE_AWS.md`](docs/DESPLIEGUE_AWS.md).
 
 ---
 
@@ -176,6 +264,11 @@ componentes internos que solo reciben tráfico del BFF o de la red de Docker Com
 entorno productivo quedarían **detrás del API Manager** o con aislamiento de red; para la
 demo local se exponen en puertos de host solo para facilitar la verificación con `curl`.
 
+**En la nube** se agrega una capa más adelante: el **JWT authorizer de Amazon API Gateway**
+rechaza con 401 cualquier petición `/api/**` sin token válido de Cognito **antes** de llegar a
+la EC2. Gateway y BFF aceptan tokens de Keycloak (claim `aud`) o de Cognito (claim
+`client_id`), y leen los roles de `realm_access.roles` o `cognito:groups`.
+
 ---
 
 ## 📚 Glosario rápido (para la presentación)
@@ -278,6 +371,10 @@ misma `RABBITMQ_ERLANG_COOKIE` y `rabbitmq_management`), **clúster Kafka de 3 Z
 
 ## 📖 Documentación
 
+- [`docs/ESTADO_Y_CONTEXTO.md`](docs/ESTADO_Y_CONTEXTO.md) — **empezar aquí**: estado actual,
+  checklist del día de la presentación y problemas frecuentes.
+- [`docs/GUIA_DE_ESTUDIO_EP6.md`](docs/GUIA_DE_ESTUDIO_EP6.md) — guía didáctica de la
+  arquitectura en la nube (API Manager, IDaaS, OAuth2/OIDC, JWT, Kafka) con flujos y diagramas.
 - [`docs/DESPLIEGUE_AWS.md`](docs/DESPLIEGUE_AWS.md) — despliegue en AWS (API Gateway como API
   Manager, Cognito como IDaaS, 2 EC2 con Docker Compose) y guion de demo de la EP6.
 - [`docs/GUIA_DE_ESTUDIO_EP5.md`](docs/GUIA_DE_ESTUDIO_EP5.md) — **guía desde cero** con
