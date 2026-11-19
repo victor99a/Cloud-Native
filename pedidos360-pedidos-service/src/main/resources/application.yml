@@ -18,6 +18,8 @@ spring:
   rabbitmq:
     # Lista de nodos del clúster: si un nodo cae, el cliente reconecta al otro.
     addresses: ${RABBITMQ_ADDRESSES:${RABBITMQ_HOST:localhost}:${RABBITMQ_PORT:5672}}
+    # Reparte las conexiones entre los nodos (por defecto siempre usaría el primero).
+    address-shuffle-mode: random
     # Activa los callbacks del RabbitTemplate: confirmación del broker (ack/nack)
     # por mensaje y devolución de mensajes sin ruta (mandatory).
     publisher-confirm-type: correlated

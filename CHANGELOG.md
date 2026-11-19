@@ -5,8 +5,10 @@
 ### Mensajería (P1)
 - RabbitMQ: publisher confirms y returns activados de verdad (`publisher-confirm-type: correlated`,
   `publisher-returns: true`); antes los callbacks del `RabbitTemplate` nunca se ejecutaban.
-- RabbitMQ: los servicios se conectan a los 2 nodos del clúster (`RABBITMQ_ADDRESSES`) y reconectan al
-  otro si uno cae.
+- RabbitMQ: los servicios conocen los 2 nodos del clúster (`RABBITMQ_ADDRESSES`) y reparten sus
+  conexiones entre ellos (`address-shuffle-mode: random`); si un nodo cae, reconectan al otro.
+  Limitación: las colas son *classic* y residen en `rabbitmq1`; para que sobrevivan a la caída de un
+  nodo se necesitan colas quorum, que requieren al menos 3 nodos.
 - Consumidores RabbitMQ: un error transitorio se reintenta una sola vez; si el mensaje ya fue reentregado
   va a la DLQ (antes podía reencolarse para siempre).
 - Eventos de pedido publicados solo después del commit de la transacción (no se anuncian pedidos revertidos).
