@@ -13,7 +13,7 @@
 
     <groupId>com.pedidos360</groupId>
     <artifactId>pedidos360-admin-service</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <name>pedidos360-admin-service</name>
     <description>Microservicio administrador de RabbitMQ para Pedidos360</description>
 

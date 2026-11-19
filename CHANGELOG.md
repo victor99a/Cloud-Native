@@ -1,5 +1,22 @@
 # Changelog — Pedidos360
 
+## v1.1.0 — 2026-11-19
+
+Endurecimiento de la mensajería (pendientes P1 de la auditoría), desplegado y validado en AWS.
+
+### Mensajería (P1)
+- RabbitMQ: publisher confirms y returns activados de verdad (`publisher-confirm-type: correlated`,
+  `publisher-returns: true`); antes los callbacks del `RabbitTemplate` nunca se ejecutaban.
+- RabbitMQ: los servicios conocen los 2 nodos del clúster (`RABBITMQ_ADDRESSES`) y reparten sus
+  conexiones entre ellos (`address-shuffle-mode: random`); si un nodo cae, reconectan al otro.
+  Limitación: las colas son *classic* y residen en `rabbitmq1`; para que sobrevivan a la caída de un
+  nodo se necesitan colas quorum, que requieren al menos 3 nodos.
+- Consumidores RabbitMQ: un error transitorio se reintenta una sola vez; si el mensaje ya fue reentregado
+  va a la DLQ (antes podía reencolarse para siempre).
+- Eventos de pedido publicados solo después del commit de la transacción (no se anuncian pedidos revertidos).
+- `pedidos360.analitica.metricas`: `cleanup.policy=compact,delete` para que `retention.ms` (30 días) aplique;
+  `kafka-init` alinea la configuración también en clústeres ya existentes.
+
 ## v1.0.0 — 2026-11-19
 
 Primera versión estable, desplegada y validada en AWS (EP5 + EP6).
@@ -30,9 +47,6 @@ Primera versión estable, desplegada y validada en AWS (EP5 + EP6).
 - 46 pruebas automatizadas en los 8 microservicios (`mvn clean verify`).
 
 ### Pendientes conocidos (no bloquean la versión)
-- RabbitMQ: `publisher-confirm-type`/`publisher-returns`, conexión a ambos nodos
-  (`addresses`) y límite de reintentos con `requeue=true`.
-- Publicar eventos después del commit (outbox / `AFTER_COMMIT`).
-- `pedidos360.analitica.metricas`: usar `compact,delete` si se quiere que aplique `retention.ms`.
+- (Resueltos en v1.1.0: confirms, nodos, reintentos, after-commit y política del tópico.)
 - Restringir el puerto 8080 de la EC2 de apps al API Gateway (VPC Link).
 - La numeración `PED-NNNNNN` usa `count()+1` y puede repetirse tras eliminar pedidos intermedios.
