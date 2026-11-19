@@ -1,5 +1,16 @@
 # Changelog — Pedidos360
 
+## Sin publicar
+
+### Seguridad y consistencia (P2)
+- API Manager obligatorio: API Gateway agrega el encabezado secreto `X-Origin-Verify` y el gateway de
+  Spring responde 403 a toda petición `/api/**` que no lo trae. Llamar directo a la EC2 (`:8080`) ya no
+  se salta el API Manager. `deploy.sh` genera el secreto, lo reutiliza si ya existe y verifica el 403.
+- Número de pedido derivado del id (`PED-%06d`): ya no se repite tras eliminar pedidos (antes `count()+1`).
+- DLT compartida documentada como decisión de diseño (el origen viaja en los encabezados `kafka_dlt-*`).
+- Lag "N/A" en Kafka UI: lo causaba un grupo vacío de consola creado durante la auditoría; ya no existe
+  y los 4 grupos muestran lag 0.
+
 ## v1.1.0 — 2026-11-19
 
 Endurecimiento de la mensajería (pendientes P1 de la auditoría), desplegado y validado en AWS.

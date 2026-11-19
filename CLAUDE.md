@@ -47,6 +47,8 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 - Compose en la nube: `infra/aws/docker-compose.messaging.yml` (Kafka + RabbitMQ + Kafka UI) y
   `infra/aws/docker-compose.apps.yml` (Postgres + servicios + frontend). El `.env` lo genera
   `deploy.sh` en cada host (`~/pedidos360/infra/aws/.env`, gitignored) y **conserva** las claves existentes.
+- API Gateway inyecta `X-Origin-Verify` (secreto `ORIGIN_SECRET` en el `.env`, guardado también en la integración);
+  sin ese encabezado el gateway responde 403 en `/api/**`. Para probar en la EC2 sin pasar por API Gateway, enviar el encabezado.
 - Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); claves por defecto en `deploy.sh`.
 - Última cuenta usada: 381492248228 (us-east-1), API `https://136xrpjdoj.execute-api.us-east-1.amazonaws.com`,
   messaging EIP 44.213.34.232 (Kafka UI :8091, RabbitMQ :15672/:15673), apps EIP 52.45.200.182.
@@ -69,9 +71,8 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 - Hecho: v1.0.0 (PR #17 → `develop`, PR #18 → `main`, tag y release `v1.0.0`). Detalle en `CHANGELOG.md`.
 - Hecho: v1.1.0 = P1 de mensajería (PR #19). Limitación: colas RabbitMQ *classic* en `rabbitmq1` (HA real
   requiere colas quorum con ≥3 nodos).
-- P2 (no bloquean): puerto 8080 de la EC2 apps abierto a internet (permite saltarse el API Gateway; requiere
-  VPC Link); DLT de métricas compartida con la de eventos; numeración `PED-NNNNNN` con `count()+1`;
-  lag "N/A" en Kafka UI para grupos sin miembros.
+- P2 resueltos (rama `fix/p2-cierre`): secreto `X-Origin-Verify` entre API Gateway y gateway (directo a :8080
+  → 403); número de pedido = `PED-%06d` del id; DLT compartida documentada; lag N/A era un grupo de consola.
 - Probar login interactivo en el navegador con la URL del API Gateway.
 - Opcional: rechazar ID tokens (`token_use=id`) en gateway/BFF (hoy se aceptan).
 
