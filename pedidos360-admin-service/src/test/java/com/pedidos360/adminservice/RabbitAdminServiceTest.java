@@ -1,11 +1,13 @@
 package com.pedidos360.adminservice;
 
+import com.pedidos360.adminservice.dto.BindingRequest;
 import com.pedidos360.adminservice.dto.ExchangeRequest;
 import com.pedidos360.adminservice.dto.QueueRequest;
 import com.pedidos360.adminservice.service.RabbitAdminService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.core.Queue;
@@ -54,5 +56,17 @@ class RabbitAdminServiceTest {
     void eliminaCola() {
         service.deleteQueue("demo.queue");
         verify(amqpAdmin).deleteQueue("demo.queue");
+    }
+
+    @Test
+    void eliminaBindingColaExchange() {
+        service.removeBinding(new BindingRequest("demo.queue", "demo.exchange", "demo.key", null));
+
+        ArgumentCaptor<Binding> captor = ArgumentCaptor.forClass(Binding.class);
+        verify(amqpAdmin).removeBinding(captor.capture());
+        assertThat(captor.getValue().getDestination()).isEqualTo("demo.queue");
+        assertThat(captor.getValue().getExchange()).isEqualTo("demo.exchange");
+        assertThat(captor.getValue().getRoutingKey()).isEqualTo("demo.key");
+        assertThat(captor.getValue().getDestinationType()).isEqualTo(Binding.DestinationType.QUEUE);
     }
 }
