@@ -17,20 +17,20 @@ Cada integrante trabaja en una **rama independiente** y sube sus commits. Las á
 | Integrante | Área | Rama | Carpeta / Archivos |
 |------------|------|------|--------------------|
 | **Integrante 1** — Backend | BFF Spring Boot | `feature/backend-bff` | `pedidos360-bff/**` |
-| **Integrante 2** — Frontend Core | Auth MSAL + core | `feature/frontend-core` | `pedidos360-frontend/src/app/core/**`, `app.config.ts`, `app.routes.ts`, `app.component.ts`, `environments/**` |
+| **Integrante 2** — Frontend Core | Auth Keycloak + core | `feature/frontend-core` | `pedidos360-frontend/src/app/core/**`, `app.config.ts`, `app.routes.ts`, `app.component.ts`, `environments/**` |
 | **Integrante 3** — Frontend UI | Features + Shared | `feature/frontend-ui` | `pedidos360-frontend/src/app/features/**`, `pedidos360-frontend/src/app/shared/**` |
 
 ## Detalle por integrante
 
 ### Integrante 1 — Backend BFF (`pedidos360-bff`)
-- `security/`: `JwtAuthenticationConverter`, `AzureAdRolesConverter`, `SecurityUtils`
-- `config/`: `SecurityConfig`, `CorsConfig`, `RestClientConfig`, `JpaAuditingConfig`
+- `security/`: `JwtAuthenticationConverter`, `KeycloakRolesConverter`, `SecurityUtils`
+- `config/`: `SecurityConfig`, `CorsConfig`, `RestClientConfig`, `JwtDecoderConfig`
 - `controller/`, `service/`, `repository/`, `entity/`, `dto/`, `exception/`
-- `resources/application.yml` (Azure AD + PostgreSQL)
+- `resources/application.yml` (Keycloak IDaaS + PostgreSQL)
 
 ### Integrante 2 — Frontend Core + Auth (`pedidos360-frontend`)
-- `core/auth/`: `msal-config.ts`, `auth.service.ts`, `guards/auth.guard.ts`, `interceptors/msal.interceptor.ts`
-- `core/interceptors/`: `http-error`, `auth-token`, `loading`
+- `core/auth/`: `keycloak-config.ts`, `auth.service.ts`, `guards/auth.guard.ts`
+- `core/interceptors/`: `http-error`, `loading` (el Bearer token lo adjunta `KeycloakBearerInterceptor` en `app.config.ts`)
 - `core/services/`: `api.service.ts`, `error-handler.service.ts`, `logger.service.ts`
 - `app.config.ts`, `app.routes.ts`, `app.component.ts`, `environments/`
 
@@ -38,18 +38,19 @@ Cada integrante trabaja en una **rama independiente** y sube sus commits. Las á
 - `features/pedidos/`, `features/productos/`, `features/dashboard/` (pages, components, services, models, routes)
 - `shared/`: `components/` (button, modal, loader), `material/`, `pipes/`, `directives/`, `utils/`, `constants/`
 
-## Autenticación Azure AD (repartida entre 2 integrantes)
+## Autenticación Keycloak (IDaaS, repartida entre 2 integrantes)
 
-La autenticación con Azure AD tiene **dos mitades que se comunican**:
+La autenticación con Keycloak (OAuth 2.0 / OpenID Connect, Authorization Code + PKCE) tiene
+**dos mitades que se comunican**:
 
 | Capa | Integrante | Qué hace | Archivos |
 |------|------------|----------|----------|
-| **Frontend** (obtiene el token) | Integrante 2 | Login/logout con MSAL, guarda el token y lo adjunta a cada request (`Authorization: Bearer`) | `core/auth/msal-config.ts`, `auth.service.ts`, `guards/auth.guard.ts`, `interceptors/msal.interceptor.ts`, `app.config.ts` |
-| **Backend** (valida el token) | Integrante 1 | Valida firma / issuer / audience / expiración del JWT y extrae roles | `config/SecurityConfig.java`, `security/JwtAuthenticationConverter.java`, `application.yml` |
+| **Frontend** (obtiene el token) | Integrante 2 | Login/logout con `keycloak-angular`, adjunta el JWT a cada request (`Authorization: Bearer` vía `KeycloakBearerInterceptor`) | `core/auth/keycloak-config.ts`, `auth.service.ts`, `guards/auth.guard.ts`, `app.config.ts` |
+| **Backend** (valida el token) | Integrante 1 | Valida firma / issuer / audience / expiración del JWT y extrae roles | `config/SecurityConfig.java`, `config/JwtDecoderConfig.java`, `security/KeycloakRolesConverter.java`, `application.yml` |
 
 **Contrato entre ambos (coordinación obligatoria):**
-- El `scope` que pide el frontend (`api://<API_APP_ID>/access_as_user`) debe coincidir con el `audience` del backend (`spring.security.oauth2.resourceserver.jwt.audiences`).
-- Ambos comparten el mismo `TENANT_ID` y `API_APP_ID`.
+- El `clientId` del frontend (`pedidos360-spa`) debe coincidir con el `audience` que valida el backend (`pedidos360-spa`).
+- Ambos comparten el mismo `realm` (`pedidos360`) y las URLs `issuer` / `jwk-set` de Keycloak.
 
 ## Flujo de trabajo (Git)
 

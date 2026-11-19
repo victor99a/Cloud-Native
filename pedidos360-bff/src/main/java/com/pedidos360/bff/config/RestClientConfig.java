@@ -28,4 +28,10 @@ public class RestClientConfig {
                                           @Value("${downstream.productos.base-url:http://localhost:8082}") String baseUrl) {
         return builder.baseUrl(baseUrl).requestFactory(jdkRequestFactory()).build();
     }
+
+    @Bean
+    public RestClient analyticsRestClient(RestClient.Builder builder,
+                                          @Value("${downstream.analytics.base-url:http://localhost:8086}") String baseUrl) {
+        return builder.baseUrl(baseUrl).requestFactory(jdkRequestFactory()).build();
+    }
 }

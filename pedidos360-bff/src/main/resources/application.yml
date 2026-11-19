@@ -18,6 +18,8 @@ downstream:
     base-url: ${DOWNSTREAM_PEDIDOS_URL:http://localhost:8081}
   productos:
     base-url: ${DOWNSTREAM_PRODUCTOS_URL:http://localhost:8082}
+  analytics:
+    base-url: ${DOWNSTREAM_ANALYTICS_URL:http://localhost:8086}
 
 management:
   endpoints:

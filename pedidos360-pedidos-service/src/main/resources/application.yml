@@ -20,6 +20,14 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+  kafka:
+    # Cliente Kafka del productor de eventos de pedidos.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
 
 # Nombres de exchanges y routing keys del productor, centralizados (cero hardcoding).
 pedidos360:
@@ -28,6 +36,8 @@ pedidos360:
     exchange-direct: pedidos360.direct
     routing-pedido-creado: pedido.creado
     routing-pedido-estado-prefix: "pedido.estado."
+  kafka:
+    topic-pedidos-eventos: pedidos360.pedidos.eventos
 
 management:
   endpoints:

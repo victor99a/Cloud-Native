@@ -31,7 +31,7 @@ public class PedidoEventPublisher {
 
     /** Publica el evento de pedido creado en el exchange topic y en el direct (ticket). */
     public void publishPedidoCreado(PedidoResponse pedido) {
-        PedidoEvent event = toEvent(pedido);
+        PedidoEvent event = PedidoEvent.of(TipoEventoPedido.PEDIDO_CREADO, pedido);
         publish(props.exchangeTopic(), props.routingPedidoCreado(), event);
         publish(props.exchangeDirect(), props.routingPedidoCreado(), event);
         log.info("[productor] pedido.creado publicado para pedido {}", pedido.numero());
@@ -40,7 +40,7 @@ public class PedidoEventPublisher {
     /** Publica el evento de cambio de estado en el exchange topic con routing key por estado. */
     public void publishEstadoCambiado(PedidoResponse pedido) {
         String routingKey = props.routingPedidoEstadoPrefix() + pedido.estado().name().toLowerCase();
-        publish(props.exchangeTopic(), routingKey, toEvent(pedido));
+        publish(props.exchangeTopic(), routingKey, PedidoEvent.of(TipoEventoPedido.ESTADO_ACTUALIZADO, pedido));
         log.info("[productor] {} publicado para pedido {}", routingKey, pedido.numero());
     }
 
@@ -54,14 +54,4 @@ public class PedidoEventPublisher {
         log.info("[productor] {} -> {} correlationId={}", routingKey, exchange, correlation.getId());
     }
 
-    private PedidoEvent toEvent(PedidoResponse pedido) {
-        return new PedidoEvent(
-                pedido.id(),
-                pedido.numero(),
-                pedido.cliente(),
-                pedido.estado().name(),
-                pedido.total(),
-                pedido.fecha()
-        );
-    }
 }

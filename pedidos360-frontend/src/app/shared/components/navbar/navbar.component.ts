@@ -32,6 +32,7 @@ const ROLES_PRODUCTOS = ['ADMIN', 'OPERADOR'];
         <div class="nav-links" id="nav-links" [class.open]="menuOpen()">
           <a routerLink="/dashboard" routerLinkActive="active" (click)="closeMenu()">Dashboard</a>
           <a routerLink="/pedidos" routerLinkActive="active" (click)="closeMenu()">Pedidos</a>
+          <a routerLink="/analitica" routerLinkActive="active" (click)="closeMenu()">Analítica</a>
           @if (puedeVerProductos()) {
             <a routerLink="/productos" routerLinkActive="active" (click)="closeMenu()">Productos</a>
           }

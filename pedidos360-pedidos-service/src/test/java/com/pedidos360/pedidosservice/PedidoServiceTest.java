@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pedidos360.pedidosservice.dto.request.PedidoRequest;
 import com.pedidos360.pedidosservice.entity.Producto;
+import com.pedidos360.pedidosservice.messaging.PedidoEventKafkaProducer;
 import com.pedidos360.pedidosservice.messaging.PedidoEventPublisher;
 import com.pedidos360.pedidosservice.repository.ProductoRepository;
 import java.math.BigDecimal;
@@ -38,6 +39,9 @@ class PedidoServiceTest {
 
     @MockBean
     private PedidoEventPublisher eventPublisher;
+
+    @MockBean
+    private PedidoEventKafkaProducer kafkaEventProducer;
 
     @Test
     void createConDosItems_calculaSubtotalYTotal() throws Exception {

@@ -67,4 +67,14 @@ public class RabbitAdminController {
         String binding = adminService.declareBinding(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("binding", binding));
     }
+
+    /**
+     * Elimina un binding. Se envían en el cuerpo los mismos datos con que se creó
+     * (cola, exchange, routing key), que es como RabbitMQ identifica el binding.
+     */
+    @DeleteMapping("/bindings")
+    public ResponseEntity<Map<String, String>> deleteBinding(@Valid @RequestBody BindingRequest request) {
+        String binding = adminService.removeBinding(request);
+        return ResponseEntity.ok(Map.of("binding", binding, "status", "deleted"));
+    }
 }

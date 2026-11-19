@@ -54,14 +54,31 @@ public class RabbitAdminService {
     }
 
     public String declareBinding(BindingRequest request) {
-        Binding binding = new Binding(
+        amqpAdmin.declareBinding(toBinding(request));
+        return describe(request);
+    }
+
+    /**
+     * Elimina un binding cola-exchange. RabbitMQ identifica el binding por
+     * (cola, exchange, routing key, argumentos), por eso se reciben los mismos datos
+     * que al crearlo.
+     */
+    public String removeBinding(BindingRequest request) {
+        amqpAdmin.removeBinding(toBinding(request));
+        return describe(request);
+    }
+
+    private Binding toBinding(BindingRequest request) {
+        return new Binding(
                 request.queue(),
                 Binding.DestinationType.QUEUE,
                 request.exchange(),
                 request.routingKey(),
                 request.arguments()
         );
-        amqpAdmin.declareBinding(binding);
+    }
+
+    private String describe(BindingRequest request) {
         return request.queue() + " -> " + request.exchange() + " (" + request.routingKey() + ")";
     }
 

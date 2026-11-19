@@ -21,5 +21,10 @@ export const routes: Routes = [
     loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
     canActivate: [authGuard],
   },
+  {
+    path: 'analitica',
+    loadChildren: () => import('./features/analitica/analitica.routes').then((m) => m.analiticaRoutes),
+    canActivate: [authGuard],
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ];
