@@ -73,7 +73,9 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
   requiere colas quorum con ≥3 nodos).
 - Hecho: v1.2.0 = P2 (PR #22): secreto `X-Origin-Verify` entre API Gateway y gateway (directo a :8080
   → 403); número de pedido = `PED-%06d` del id; DLT compartida documentada; lag N/A era un grupo de consola.
-- Probar login interactivo en el navegador con la URL del API Gateway.
+- Hecho: login interactivo probado en navegador (Cognito Hosted UI, Authorization Code + PKCE → dashboard; todo `/api` vía API Gateway).
+- `/api/analitica/reporting`: vista en memoria que se reconstruye al arrancar releyendo el tópico compactado
+  (consistencia eventual: unos segundos tras un reinicio).
 - Hecho: gateway y BFF rechazan ID tokens (`AccessTokenValidator`: `token_use=id` / `typ=ID` → 401).
 
 ## Convenciones
