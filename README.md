@@ -11,6 +11,7 @@ Se ejecuta en **dos modos** con el mismo código:
 
 > 🚀 **¿Primera vez o sesión nueva?** Lee [`docs/ESTADO_Y_CONTEXTO.md`](docs/ESTADO_Y_CONTEXTO.md).
 > 🎓 **¿Estudiando para la presentación?** Lee [`docs/GUIA_DE_ESTUDIO_EP6.md`](docs/GUIA_DE_ESTUDIO_EP6.md).
+> 🔑 **¿Vas a probar la app?** Usuarios, claves y permisos en [`docs/CREDENCIALES_DEMO.md`](docs/CREDENCIALES_DEMO.md).
 
 ---
 
@@ -147,6 +148,7 @@ bash infra/aws/destroy.sh              # borrar todo
 ```
 
 Detalle de recursos y guion de demo: [`docs/DESPLIEGUE_AWS.md`](docs/DESPLIEGUE_AWS.md).
+Usuarios y claves de prueba: [`docs/CREDENCIALES_DEMO.md`](docs/CREDENCIALES_DEMO.md).
 
 ---
 

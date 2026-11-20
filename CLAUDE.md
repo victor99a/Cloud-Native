@@ -49,7 +49,8 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
   `deploy.sh` en cada host (`~/pedidos360/infra/aws/.env`, gitignored) y **conserva** las claves existentes.
 - API Gateway inyecta `X-Origin-Verify` (secreto `ORIGIN_SECRET` en el `.env`, guardado también en la integración);
   sin ese encabezado el gateway responde 403 en `/api/**`. Para probar en la EC2 sin pasar por API Gateway, enviar el encabezado.
-- Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); claves por defecto en `deploy.sh`.
+- Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); claves y matriz de permisos en
+  `docs/CREDENCIALES_DEMO.md` (las claves aleatorias de BD/RabbitMQ no se versionan: están en el `.env` de cada EC2).
 - Última cuenta usada: 381492248228 (us-east-1), API `https://136xrpjdoj.execute-api.us-east-1.amazonaws.com`,
   messaging EIP 44.213.34.232 (Kafka UI :8091, RabbitMQ :15672/:15673), apps EIP 52.45.200.182.
   En otra cuenta estos valores cambian: los imprime `deploy.sh` al final.
@@ -77,6 +78,11 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 - `/api/analitica/reporting`: vista en memoria que se reconstruye al arrancar releyendo el tópico compactado
   (consistencia eventual: unos segundos tras un reinicio).
 - Hecho: gateway y BFF rechazan ID tokens (`AccessTokenValidator`: `token_use=id` / `typ=ID` → 401).
+
+## Decisiones
+
+- **Base de datos**: PostgreSQL en contenedor dentro de la EC2 de apps (no RDS), por decisión del equipo.
+- Re-auditoría EP5/EP6 completa (2026-11-19): todos los bloques en orden; DB en EC2 aceptada.
 
 ## Convenciones
 
