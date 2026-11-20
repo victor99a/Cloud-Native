@@ -16,7 +16,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
  * Decodificador/validador de JWT del BFF (defensa en profundidad).
  *
  * <p>Obtiene las claves públicas desde el {@code jwk-set-uri} interno
- * (keycloak:8080) y valida explícitamente el {@code issuer} y el {@code audience}.
+ * (keycloak:8080) y valida explícitamente el {@code issuer}, el {@code audience} y que sea un access token (no un ID token).
  * El Gateway ya rechaza tokens inválidos; el BFF repite la validación para que
  * ningún microservicio confíe únicamente en la perimetral.
  */
@@ -40,7 +40,8 @@ public class JwtDecoderConfig {
                     new OAuth2Error("invalid_token", "El audience del token no es válido", null));
         };
 
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                issuerValidator, audienceValidator, new AccessTokenValidator()));
         return decoder;
     }
 }

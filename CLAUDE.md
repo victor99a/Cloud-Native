@@ -8,7 +8,7 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 
 | Evaluación | Qué pide | Estado |
 |------------|----------|--------|
-| **EP5** (encargo, código) | Kafka: clúster 3 ZK + 3 brokers, 2 tópicos 3×3, productor/consumidores, consumer groups, DLT, admin programático, analítica en frontend | Completo — **v1.2.0** en `main` (tags `v1.0.0`, `v1.1.0`, `v1.2.0`) |
+| **EP5** (encargo, código) | Kafka: clúster 3 ZK + 3 brokers, 2 tópicos 3×3, productor/consumidores, consumer groups, DLT, admin programático, analítica en frontend | Completo — **v1.3.0** en `main` (tags `v1.0.0` … `v1.3.0`) |
 | **EP6** (presentación) | Exposición oral sobre Kafka + demo en la nube: API Manager, IDaaS (tenant + usuarios), OAuth2/OIDC + JWT, API Manager valida JWT, backend/frontend desplegados, RabbitMQ 2 nodos, 3 colas + DLQ, exchanges direct/topic, docker-compose en la nube, Kafka UI 2 tópicos 3×3 | Desplegado y validado en AWS |
 
 ## Arquitectura en 1 minuto
@@ -49,7 +49,8 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
   `deploy.sh` en cada host (`~/pedidos360/infra/aws/.env`, gitignored) y **conserva** las claves existentes.
 - API Gateway inyecta `X-Origin-Verify` (secreto `ORIGIN_SECRET` en el `.env`, guardado también en la integración);
   sin ese encabezado el gateway responde 403 en `/api/**`. Para probar en la EC2 sin pasar por API Gateway, enviar el encabezado.
-- Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); claves por defecto en `deploy.sh`.
+- Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); usuarios de la app y permisos en
+  `docs/CREDENCIALES_DEMO.md` (solo usuarios de la app; las claves de BD/RabbitMQ están en el `.env` de cada EC2).
 - Última cuenta usada: 381492248228 (us-east-1), API `https://136xrpjdoj.execute-api.us-east-1.amazonaws.com`,
   messaging EIP 44.213.34.232 (Kafka UI :8091, RabbitMQ :15672/:15673), apps EIP 52.45.200.182.
   En otra cuenta estos valores cambian: los imprime `deploy.sh` al final.
@@ -73,8 +74,16 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
   requiere colas quorum con ≥3 nodos).
 - Hecho: v1.2.0 = P2 (PR #22): secreto `X-Origin-Verify` entre API Gateway y gateway (directo a :8080
   → 403); número de pedido = `PED-%06d` del id; DLT compartida documentada; lag N/A era un grupo de consola.
-- Probar login interactivo en el navegador con la URL del API Gateway.
-- Opcional: rechazar ID tokens (`token_use=id`) en gateway/BFF (hoy se aceptan).
+- Hecho: login interactivo probado en navegador (Cognito Hosted UI, Authorization Code + PKCE → dashboard; todo `/api` vía API Gateway).
+- `/api/analitica/reporting`: vista en memoria que se reconstruye al arrancar releyendo el tópico compactado
+  (consistencia eventual: unos segundos tras un reinicio).
+- Hecho: v1.3.0 = opcionales de la re-auditoría (ID tokens, reporting vía BFF, higiene) + README con diagramas IDaaS/RabbitMQ/Kafka.
+- Hecho: gateway y BFF rechazan ID tokens (`AccessTokenValidator`: `token_use=id` / `typ=ID` → 401).
+
+## Decisiones
+
+- **Base de datos**: PostgreSQL en contenedor dentro de la EC2 de apps (no RDS), por decisión del equipo.
+- Re-auditoría EP5/EP6 completa (2026-11-19): todos los bloques en orden; DB en EC2 aceptada.
 
 ## Convenciones
 

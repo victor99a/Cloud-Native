@@ -27,4 +27,14 @@ public class AnalyticsController {
     public List<MetricaAnaliticaResponse> resumen() {
         return analyticsServiceClient.resumen();
     }
+
+    /**
+     * Último valor por estado leído desde el tópico compactado
+     * {@code pedidos360.analitica.metricas} (consumer group de reporting).
+     */
+    @GetMapping("/reporting")
+    @PreAuthorize("isAuthenticated()")
+    public List<MetricaAnaliticaResponse> reporting() {
+        return analyticsServiceClient.reporting();
+    }
 }
