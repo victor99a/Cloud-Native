@@ -49,8 +49,8 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
   `deploy.sh` en cada host (`~/pedidos360/infra/aws/.env`, gitignored) y **conserva** las claves existentes.
 - API Gateway inyecta `X-Origin-Verify` (secreto `ORIGIN_SECRET` en el `.env`, guardado también en la integración);
   sin ese encabezado el gateway responde 403 en `/api/**`. Para probar en la EC2 sin pasar por API Gateway, enviar el encabezado.
-- Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); claves y matriz de permisos en
-  `docs/CREDENCIALES_DEMO.md` (las claves aleatorias de BD/RabbitMQ no se versionan: están en el `.env` de cada EC2).
+- Usuarios demo Cognito: `admin` (ADMIN), `operador` (OPERADOR), `cliente` (CLIENTE); usuarios de la app y permisos en
+  `docs/CREDENCIALES_DEMO.md` (solo usuarios de la app; las claves de BD/RabbitMQ están en el `.env` de cada EC2).
 - Última cuenta usada: 381492248228 (us-east-1), API `https://136xrpjdoj.execute-api.us-east-1.amazonaws.com`,
   messaging EIP 44.213.34.232 (Kafka UI :8091, RabbitMQ :15672/:15673), apps EIP 52.45.200.182.
   En otra cuenta estos valores cambian: los imprime `deploy.sh` al final.
