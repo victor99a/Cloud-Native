@@ -10,6 +10,8 @@
 - El BFF expone `GET /api/analitica/reporting` (vista materializada del tópico compactado de métricas): existía
   en analytics-service y estaba documentado, pero no era alcanzable a través del API Manager.
 - La vista de reporting oculta los estados que quedaron sin pedidos, igual que el resumen.
+- La vista de reporting se reconstruye al arrancar releyendo el tópico compactado desde el inicio
+  (`ConsumerSeekAware`); antes quedaba vacía tras un reinicio hasta la siguiente métrica.
 - BFF: una ruta inexistente responde 404 (antes 500).
 
 ### Higiene (auditoría)
