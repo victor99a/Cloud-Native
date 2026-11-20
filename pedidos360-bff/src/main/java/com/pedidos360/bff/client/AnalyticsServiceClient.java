@@ -26,4 +26,13 @@ public class AnalyticsServiceClient {
                 .body(new ParameterizedTypeReference<>() {
                 });
     }
+
+    /** Vista materializada del tópico compactado de métricas (consumer group de reporting). */
+    public List<MetricaAnaliticaResponse> reporting() {
+        return restClient.get()
+                .uri("/api/analitica/reporting")
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                });
+    }
 }

@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -47,6 +48,12 @@ public class GlobalExceptionHandler {
             errors.put(error.getField(), error.getDefaultMessage());
         }
         return build(HttpStatus.BAD_REQUEST, "Validación fallida: " + errors, request);
+    }
+
+    /** Ruta inexistente: 404 (antes caía en el manejador genérico y respondía 500). */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, "Recurso no encontrado", request);
     }
 
     @ExceptionHandler(Exception.class)

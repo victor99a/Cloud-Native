@@ -42,4 +42,12 @@ class ReportingServiceTest {
         assertThat(service.aplicar(new MetricasPedidoDto(null, 1, BigDecimal.ONE, LocalDateTime.now()))).isFalse();
         assertThat(service.snapshot()).isEmpty();
     }
+
+    @Test
+    void ocultaEstadosQueQuedaronSinPedidos() {
+        LocalDateTime t0 = LocalDateTime.now();
+        service.aplicar(new MetricasPedidoDto("PENDIENTE", 1L, new BigDecimal("10.00"), t0));
+        service.aplicar(new MetricasPedidoDto("PENDIENTE", 0L, BigDecimal.ZERO, t0.plusSeconds(1)));
+        assertThat(service.snapshot()).isEmpty();
+    }
 }

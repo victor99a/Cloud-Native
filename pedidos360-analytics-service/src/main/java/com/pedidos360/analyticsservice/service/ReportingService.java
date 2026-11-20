@@ -33,8 +33,10 @@ public class ReportingService {
         return resultado == metrica;
     }
 
+    /** Estados con pedidos (igual que el resumen): un estado que quedó en 0 no se muestra. */
     public List<MetricasPedidoDto> snapshot() {
         return snapshot.values().stream()
+                .filter(m -> m.totalPedidos() > 0)
                 .sorted(Comparator.comparing(MetricasPedidoDto::estado))
                 .toList();
     }

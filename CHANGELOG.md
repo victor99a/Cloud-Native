@@ -6,6 +6,12 @@
 - Gateway y BFF aceptan solo access tokens: un ID token (Cognito `token_use=id`, Keycloak `typ=ID`) se
   rechaza con 401 aunque tenga firma, issuer y audience válidos.
 
+### Analítica (auditoría)
+- El BFF expone `GET /api/analitica/reporting` (vista materializada del tópico compactado de métricas): existía
+  en analytics-service y estaba documentado, pero no era alcanzable a través del API Manager.
+- La vista de reporting oculta los estados que quedaron sin pedidos, igual que el resumen.
+- BFF: una ruta inexistente responde 404 (antes 500).
+
 ### Higiene (auditoría)
 - `.gitignore` raíz: ignora `.env`/`.env.*` en cualquier nivel (excepto `.env.example`), llaves `*.pem`/`*.key`,
   logs y temporales.
