@@ -6,3 +6,20 @@
 
 # Secretos de despliegue (docker-compose)
 infra/**/.env
+
+# Secretos en cualquier nivel (las plantillas .env.example sí se versionan)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs y temporales
+*.log
+*.tmp
+*.swp
+Thumbs.db
+
+# Artefactos de herramientas locales
+.playwright-mcp/
+.omo/

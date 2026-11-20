@@ -6,6 +6,14 @@
 - Gateway y BFF aceptan solo access tokens: un ID token (Cognito `token_use=id`, Keycloak `typ=ID`) se
   rechaza con 401 aunque tenga firma, issuer y audience válidos.
 
+### Higiene (auditoría)
+- `.gitignore` raíz: ignora `.env`/`.env.*` en cualquier nivel (excepto `.env.example`), llaves `*.pem`/`*.key`,
+  logs y temporales.
+- Kafka: se eliminan de los `application.yml` de pedidos y analytics las propiedades `spring.kafka.producer/consumer`
+  que no tenían efecto (cada servicio define su `ProducerFactory`/`ConsumerFactory`); la configuración del cliente
+  queda en un solo lugar (`KafkaProducerConfig`/`KafkaConsumerConfig`).
+- Frontend: se elimina el script `npm test`, que apuntaba a un target inexistente.
+
 ## v1.2.0 — 2026-11-19
 
 Cierre de los pendientes P2 de la auditoría, desplegado y validado en AWS.
