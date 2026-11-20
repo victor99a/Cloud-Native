@@ -74,7 +74,7 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 - Hecho: v1.2.0 = P2 (PR #22): secreto `X-Origin-Verify` entre API Gateway y gateway (directo a :8080
   → 403); número de pedido = `PED-%06d` del id; DLT compartida documentada; lag N/A era un grupo de consola.
 - Probar login interactivo en el navegador con la URL del API Gateway.
-- Opcional: rechazar ID tokens (`token_use=id`) en gateway/BFF (hoy se aceptan).
+- Hecho: gateway y BFF rechazan ID tokens (`AccessTokenValidator`: `token_use=id` / `typ=ID` → 401).
 
 ## Convenciones
 

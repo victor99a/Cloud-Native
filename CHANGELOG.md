@@ -1,5 +1,11 @@
 # Changelog — Pedidos360
 
+## Sin publicar
+
+### Seguridad
+- Gateway y BFF aceptan solo access tokens: un ID token (Cognito `token_use=id`, Keycloak `typ=ID`) se
+  rechaza con 401 aunque tenga firma, issuer y audience válidos.
+
 ## v1.2.0 — 2026-11-19
 
 Cierre de los pendientes P2 de la auditoría, desplegado y validado en AWS.
