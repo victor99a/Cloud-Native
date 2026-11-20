@@ -27,13 +27,9 @@ spring:
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
   kafka:
-    # Cliente Kafka del productor de eventos de pedidos.
+    # Brokers del clúster. Serializers, acks=all, idempotencia y reintentos del productor
+    # se definen en un solo lugar: messaging/KafkaProducerConfig.
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.add.type.headers: false
 
 # Nombres de exchanges y routing keys del productor, centralizados (cero hardcoding).
 pedidos360:

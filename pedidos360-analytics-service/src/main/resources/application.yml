@@ -16,21 +16,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
-    # Bootstrap servers y serializers del CLIENTE Kafka (productor y consumidor).
+    # Brokers del clúster. El resto del cliente se define en un solo lugar, en config/:
+    # - KafkaProducerConfig: serializers JSON, acks=all, idempotencia, reintentos.
+    # - KafkaConsumerConfig: ErrorHandlingDeserializer + JSON tipado, auto-offset-reset=earliest,
+    #   commit manual por registro, concurrencia, reintentos con backoff y DLT.
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        # Sin encabezados de tipo: los mensajes son JSON puro interoperable entre servicios.
-        spring.json.add.type.headers: false
-        # Garantías de entrega: ACK de todas las réplicas ISR + idempotencia.
-        acks: all
-        enable.idempotence: true
-    consumer:
-      # Los consumidores se configuran de forma programática en KafkaConsumerConfig
-      # (ErrorHandlingDeserializer + JSON tipado, commit por registro, reintentos y DLT).
-      auto-offset-reset: earliest
 
 # Nombres de tópicos, grupos y DLT centralizados (cero hardcoding en código).
 pedidos360:

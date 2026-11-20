@@ -41,7 +41,8 @@ public class JwtDecoderConfig {
                     new OAuth2Error("invalid_token", "El audience del token no es válido", null));
         };
 
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                issuerValidator, audienceValidator, new AccessTokenValidator()));
         return decoder;
     }
 }

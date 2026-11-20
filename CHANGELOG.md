@@ -1,5 +1,27 @@
 # Changelog — Pedidos360
 
+## Sin publicar
+
+### Seguridad
+- Gateway y BFF aceptan solo access tokens: un ID token (Cognito `token_use=id`, Keycloak `typ=ID`) se
+  rechaza con 401 aunque tenga firma, issuer y audience válidos.
+
+### Analítica (auditoría)
+- El BFF expone `GET /api/analitica/reporting` (vista materializada del tópico compactado de métricas): existía
+  en analytics-service y estaba documentado, pero no era alcanzable a través del API Manager.
+- La vista de reporting oculta los estados que quedaron sin pedidos, igual que el resumen.
+- La vista de reporting se reconstruye al arrancar releyendo el tópico compactado desde el inicio
+  (`ConsumerSeekAware`); antes quedaba vacía tras un reinicio hasta la siguiente métrica.
+- BFF: una ruta inexistente responde 404 (antes 500).
+
+### Higiene (auditoría)
+- `.gitignore` raíz: ignora `.env`/`.env.*` en cualquier nivel (excepto `.env.example`), llaves `*.pem`/`*.key`,
+  logs y temporales.
+- Kafka: se eliminan de los `application.yml` de pedidos y analytics las propiedades `spring.kafka.producer/consumer`
+  que no tenían efecto (cada servicio define su `ProducerFactory`/`ConsumerFactory`); la configuración del cliente
+  queda en un solo lugar (`KafkaProducerConfig`/`KafkaConsumerConfig`).
+- Frontend: se elimina el script `npm test`, que apuntaba a un target inexistente.
+
 ## v1.2.0 — 2026-11-19
 
 Cierre de los pendientes P2 de la auditoría, desplegado y validado en AWS.
