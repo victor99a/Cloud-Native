@@ -8,7 +8,7 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 
 | Evaluación | Qué pide | Estado |
 |------------|----------|--------|
-| **EP5** (encargo, código) | Kafka: clúster 3 ZK + 3 brokers, 2 tópicos 3×3, productor/consumidores, consumer groups, DLT, admin programático, analítica en frontend | Completo — **v1.2.0** en `main` (tags `v1.0.0`, `v1.1.0`, `v1.2.0`) |
+| **EP5** (encargo, código) | Kafka: clúster 3 ZK + 3 brokers, 2 tópicos 3×3, productor/consumidores, consumer groups, DLT, admin programático, analítica en frontend | Completo — **v1.3.0** en `main` (tags `v1.0.0` … `v1.3.0`) |
 | **EP6** (presentación) | Exposición oral sobre Kafka + demo en la nube: API Manager, IDaaS (tenant + usuarios), OAuth2/OIDC + JWT, API Manager valida JWT, backend/frontend desplegados, RabbitMQ 2 nodos, 3 colas + DLQ, exchanges direct/topic, docker-compose en la nube, Kafka UI 2 tópicos 3×3 | Desplegado y validado en AWS |
 
 ## Arquitectura en 1 minuto
@@ -77,6 +77,7 @@ Detalle extendido: `docs/ESTADO_Y_CONTEXTO.md`.
 - Hecho: login interactivo probado en navegador (Cognito Hosted UI, Authorization Code + PKCE → dashboard; todo `/api` vía API Gateway).
 - `/api/analitica/reporting`: vista en memoria que se reconstruye al arrancar releyendo el tópico compactado
   (consistencia eventual: unos segundos tras un reinicio).
+- Hecho: v1.3.0 = opcionales de la re-auditoría (ID tokens, reporting vía BFF, higiene) + README con diagramas IDaaS/RabbitMQ/Kafka.
 - Hecho: gateway y BFF rechazan ID tokens (`AccessTokenValidator`: `token_use=id` / `typ=ID` → 401).
 
 ## Decisiones

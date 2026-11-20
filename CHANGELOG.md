@@ -1,6 +1,15 @@
 # Changelog — Pedidos360
 
-## Sin publicar
+## v1.3.0 — 2026-11-19
+
+### Documentación
+- README reestructurado: estructura del repositorio, componentes y puertos, y secciones detalladas de
+  **IDaaS** (Authorization Code + PKCE, cadena de validación del JWT, anatomía del token, permisos por rol),
+  **RabbitMQ** (clúster, topología, ciclo de vida del mensaje con ACK/DLQ, admin) y **Kafka** (clúster HA,
+  tópicos y particiones, flujo de streaming, consumer groups, DLT, configuración, admin, observabilidad),
+  con diagramas Mermaid.
+- `docs/CREDENCIALES_DEMO.md`: usuarios de prueba de la app (Cognito y Keycloak) y matriz de permisos.
+- Decisión registrada: PostgreSQL se mantiene en la EC2 de apps.
 
 ### Seguridad
 - Gateway y BFF aceptan solo access tokens: un ID token (Cognito `token_use=id`, Keycloak `typ=ID`) se
