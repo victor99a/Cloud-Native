@@ -13,7 +13,7 @@
 
     <groupId>com.pedidos360</groupId>
     <artifactId>pedidos360-kafka-admin-service</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
     <name>pedidos360-kafka-admin-service</name>
     <description>Microservicio administrador de Kafka: gestión programática de tópicos y consumer groups.</description>
 
