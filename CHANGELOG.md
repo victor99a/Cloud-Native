@@ -1,6 +1,11 @@
 # Changelog — Pedidos360
 
-## Sin publicar — Frontend: UX y diseño responsivo
+## v1.3.1 — 2026-11-22
+
+Mejoras de UX y diseño responsivo del frontend (#30).
+
+### Repositorio
+- `CLAUDE.md` deja de versionarse (queda solo como archivo local, en `.gitignore`).
 
 ### Frontend
 - Móvil: las tablas de Pedidos, Productos y Analítica se apilan como tarjetas (≤ 640 px); antes la columna

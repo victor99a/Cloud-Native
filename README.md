@@ -103,7 +103,7 @@ Cloud-Native/
 │   ├── aws/                        deploy.sh / destroy.sh + compose de las 2 EC2
 │   └── keycloak/realm-export.json  realm local (usuarios, roles, cliente SPA)
 ├── docs/                           guías, despliegue, arquitectura Kafka, diagramas
-├── CHANGELOG.md                    versiones (v1.0.0 → v1.3.0)
+├── CHANGELOG.md                    versiones (v1.0.0 → v1.3.1)
 └── CONTRIBUTING.md                 modelo de ramas y convenciones
 ```
 

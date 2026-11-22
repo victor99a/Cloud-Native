@@ -13,7 +13,7 @@
 
     <groupId>com.pedidos360</groupId>
     <artifactId>pedidos360-productos-service</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
     <name>pedidos360-productos-service</name>
     <description>Microservicio de productos para Pedidos360</description>
 
