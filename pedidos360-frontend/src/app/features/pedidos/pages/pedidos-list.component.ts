@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { EstadoPedido, PedidoItemRequest } from '../models/pedido.model';
+import { EstadoPedido, PedidoItemRequest, estadoLabel } from '../models/pedido.model';
 import { PedidosStoreService } from '../services/pedidos-store.service';
 import { ProductosStoreService } from '../../productos/services/productos-store.service';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
@@ -42,6 +42,13 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
         <div class="error-message" role="alert">{{ error }}</div>
       }
 
+      @if (store.accionError(); as accionError) {
+        <div class="error-message action-error" role="alert">
+          <span>{{ accionError }}</span>
+          <button type="button" aria-label="Cerrar aviso" (click)="store.limpiarAccionError()">✕</button>
+        </div>
+      }
+
       @if (!store.isLoading() && !store.error()) {
         <div class="filters">
           <input
@@ -54,7 +61,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
           <select [(ngModel)]="filtroEstado" name="filtroEstado" aria-label="Filtrar por estado">
             <option value="">Todos los estados</option>
             @for (estado of estados; track estado) {
-              <option [value]="estado">{{ estado }}</option>
+              <option [value]="estado">{{ etiquetaEstado(estado) }}</option>
             }
           </select>
         </div>
@@ -66,7 +73,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
           </div>
         } @else {
           <div class="table-wrap">
-            <table>
+            <table class="table-stack">
               <thead>
                 <tr>
                   <th>N°</th>
@@ -85,10 +92,10 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
                     [routerLink]="['/pedidos', pedido.id]"
                     (keydown.enter)="irAlPedido(pedido.id)"
                   >
-                    <td>{{ pedido.numero }}</td>
-                    <td>{{ pedido.cliente }}</td>
-                    <td><app-order-status-badge [estado]="pedido.estado" /></td>
-                    <td>&#36;{{ pedido.total | number: '1.0-0' }}</td>
+                    <td class="nowrap" data-label="N°">{{ pedido.numero }}</td>
+                    <td data-label="Cliente">{{ pedido.cliente }}</td>
+                    <td data-label="Estado"><app-order-status-badge [estado]="pedido.estado" /></td>
+                    <td class="nowrap" data-label="Total">&#36;{{ pedido.total | number: '1.0-0' }}</td>
                   </tr>
                 }
               </tbody>
@@ -151,6 +158,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
             <app-button
               label="Guardar"
               type="submit"
+              [loading]="store.guardando()"
               [disabled]="!nuevoCliente.trim() || items.length === 0"
             />
           </div>
@@ -171,8 +179,15 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
     }
 
     .filters select {
-      flex: 0 1 auto;
+      flex: 0 1 220px;
+      width: auto;
       min-width: 180px;
+    }
+
+    @media (max-width: 640px) {
+      .filters select {
+        flex-basis: 100%;
+      }
     }
 
     tr.clickable {
@@ -290,6 +305,10 @@ export class PedidosListComponent implements OnInit {
           (!cliente || p.cliente.toLowerCase().includes(cliente)) &&
           (!estado || p.estado === estado),
       );
+  }
+
+  etiquetaEstado(estado: EstadoPedido): string {
+    return estadoLabel(estado);
   }
 
   nombreProducto(productoId: number): string {

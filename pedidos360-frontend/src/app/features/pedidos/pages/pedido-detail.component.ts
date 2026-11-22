@@ -2,6 +2,9 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PedidosStoreService } from '../services/pedidos-store.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
+import { estadoLabel } from '../models/pedido.model';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
@@ -17,6 +20,7 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
     ButtonComponent,
     LoaderComponent,
     OrderStatusBadgeComponent,
+    ModalComponent,
   ],
   template: `
     <app-navbar />
@@ -28,6 +32,13 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
 
       @if (store.error(); as error) {
         <div class="error-message" role="alert">{{ error }}</div>
+      }
+
+      @if (store.accionError(); as accionError) {
+        <div class="error-message action-error" role="alert">
+          <span>{{ accionError }}</span>
+          <button type="button" aria-label="Cerrar aviso" (click)="store.limpiarAccionError()">✕</button>
+        </div>
       }
 
       @if (!store.isLoading() && !store.error()) {
@@ -55,14 +66,26 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
             </p>
 
             <div class="actions">
-              @if (siguienteEstado(); as siguiente) {
-                <app-button [label]="'Avanzar a ' + siguiente" (clicked)="avanzar()" />
-              } @else {
+              @if (!siguienteEstado() && !puedeCancelar()) {
                 <p class="info">Este pedido ya llegó a su estado final.</p>
-              }
-
-              @if (pedido.estado !== 'ENTREGADO' && pedido.estado !== 'CANCELADO') {
-                <app-button label="Cancelar pedido" variant="danger" (clicked)="cancelar()" />
+              } @else if (!puedeGestionar()) {
+                <p class="info">Solo un administrador u operador puede cambiar el estado de este pedido.</p>
+              } @else {
+                @if (siguienteEstado(); as siguiente) {
+                  <app-button
+                    [label]="'Avanzar a ' + etiquetaEstado(siguiente)"
+                    [loading]="store.guardando()"
+                    (clicked)="avanzar()"
+                  />
+                }
+                @if (puedeCancelar()) {
+                  <app-button
+                    label="Cancelar pedido"
+                    variant="danger"
+                    [disabled]="store.guardando()"
+                    (clicked)="confirmarCancelacion = true"
+                  />
+                }
               }
             </div>
           </div>
@@ -73,11 +96,22 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
           </div>
         }
       }
+      <app-modal title="¿Cancelar este pedido?" [isOpen]="confirmarCancelacion" (close)="confirmarCancelacion = false">
+        <p class="confirm-text">
+          El pedido {{ pedido()?.numero }} pasará a <strong>Cancelado</strong>. Esta acción no se puede deshacer.
+        </p>
+        <div class="confirm-actions">
+          <app-button label="Volver" variant="secondary" (clicked)="confirmarCancelacion = false" />
+          <app-button label="Sí, cancelar pedido" variant="danger" (clicked)="cancelar()" />
+        </div>
+      </app-modal>
     </section>
   `,
   styles: `
     .back-link {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
       margin-bottom: 16px;
       color: var(--color-text-muted);
       text-decoration: none;
@@ -159,11 +193,27 @@ import { OrderStatusBadgeComponent } from '../components/order-status-badge.comp
       margin: 0;
       align-self: center;
     }
+
+    .confirm-text {
+      color: var(--color-text);
+      margin: 0 0 20px;
+    }
+
+    .confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
   `,
 })
 export class PedidoDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   readonly store = inject(PedidosStoreService);
+  private readonly authService = inject(AuthService);
+
+  /** Muestra el diálogo de confirmación antes de cancelar. */
+  confirmarCancelacion = false;
 
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
@@ -180,11 +230,27 @@ export class PedidoDetailComponent implements OnInit {
     return pedido ? this.store.siguienteEstado(pedido.estado) : null;
   }
 
+  /** El BFF solo permite cambiar estados a ADMIN y OPERADOR (los demás reciben 403). */
+  puedeGestionar(): boolean {
+    const roles = this.authService.userRoles.map((r) => r.toUpperCase());
+    return roles.includes('ADMIN') || roles.includes('OPERADOR');
+  }
+
+  puedeCancelar(): boolean {
+    const estado = this.pedido()?.estado;
+    return !!estado && estado !== 'ENTREGADO' && estado !== 'CANCELADO';
+  }
+
+  etiquetaEstado(estado: string): string {
+    return estadoLabel(estado);
+  }
+
   avanzar(): void {
     this.store.avanzarEstado(this.id);
   }
 
   cancelar(): void {
+    this.confirmarCancelacion = false;
     this.store.cancelar(this.id);
   }
 }

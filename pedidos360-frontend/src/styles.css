@@ -29,6 +29,14 @@
   --color-teal: #0d9488;
   --color-teal-soft: #ccfbf1;
 
+  /* Texto sobre fondos "soft" (badges y alertas): contraste ≥ 4.5:1 (WCAG AA) */
+  --color-danger-text: #b91c1c;
+  --color-success-text: #166534;
+  --color-warning-text: #92400e;
+  --color-info-text: #1d4ed8;
+  --color-teal-text: #115e59;
+  --color-primary-text: #4338ca;
+
   /* Tipografía */
   --font-family:
     system-ui,
@@ -239,7 +247,7 @@ tbody tr:hover {
  * ========================================================================== */
 
 .error-message {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   background: var(--color-danger-soft);
   border: 1px solid var(--color-danger);
   border-radius: var(--radius-sm);
@@ -272,6 +280,36 @@ tbody tr:hover {
   margin: 0;
 }
 
+/* Error de una acción: se muestra sobre los datos sin ocultarlos y se puede cerrar */
+.action-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.action-error button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.action-error button:hover {
+  background: rgba(185, 28, 28, 0.12);
+}
+
+/* Identificadores (N° de pedido, SKU) en una sola línea */
+.nowrap {
+  white-space: nowrap;
+}
+
 /* ============================================================================
  * Responsive: ajustes globales
  * ========================================================================== */
@@ -280,5 +318,71 @@ tbody tr:hover {
   .page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/*
+ * Tablas apiladas en móvil: cada fila pasa a ser una tarjeta y cada celda muestra
+ * su encabezado (atributo data-label). Así no hay columnas ocultas ni scroll lateral.
+ */
+@media (max-width: 640px) {
+  table.table-stack {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  table.table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  table.table-stack,
+  table.table-stack tbody,
+  table.table-stack tr,
+  table.table-stack td {
+    display: block;
+    width: 100%;
+  }
+
+  table.table-stack tr {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+    padding: 6px 0;
+  }
+
+  table.table-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    border-bottom: none;
+    text-align: right;
+  }
+
+  table.table-stack td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    text-align: left;
+  }
+
+  table.table-stack td[data-label=''] {
+    justify-content: flex-end;
+  }
+
+  table.table-stack td[data-label='']::before {
+    content: none;
   }
 }
