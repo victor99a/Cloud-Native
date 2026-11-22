@@ -99,4 +99,3 @@ ssh -i "$HOME/.ssh/labsuser.pem" ec2-user@<IP apps> \
 | `docs/DESPLIEGUE_AWS.md` | Recursos AWS, guion de demo, pruebas con curl |
 | `docs/ARQUITECTURA_KAFKA.md` | Detalle técnico de Kafka (tolerancia a fallos, paralelismo) |
 | `docs/GUIA_DE_ESTUDIO_EP5.md` | Guía desde cero de la EP5 (Kafka + RabbitMQ) |
-| `CLAUDE.md` | Contexto resumido que Claude Code carga automáticamente |

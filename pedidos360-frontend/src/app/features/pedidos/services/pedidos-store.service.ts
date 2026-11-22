@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { ApiService } from '../../../core/services/api.service';
+import { ErrorHandlerService } from '../../../core/services/error-handler.service';
 import { EstadoPedido, Pedido, PedidoRequest } from '../models/pedido.model';
 
 // Orden válido del flujo de estados del backend (pedidos360-pedidos-service).
@@ -14,14 +15,25 @@ const FLUJO_ESTADOS: EstadoPedido[] = [
 @Injectable({ providedIn: 'root' })
 export class PedidosStoreService {
   private readonly api = inject(ApiService);
+  private readonly errorHandler = inject(ErrorHandlerService);
 
   private readonly _pedidos = signal<Pedido[]>([]);
   private readonly _isLoading = signal(false);
   private readonly _error = signal<string | null>(null);
+  /** Error de una acción (crear / cambiar estado): se muestra sin ocultar los datos. */
+  private readonly _accionError = signal<string | null>(null);
+  /** true mientras hay una escritura en curso: evita envíos duplicados (doble clic). */
+  private readonly _guardando = signal(false);
 
   readonly pedidos = this._pedidos.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly accionError = this._accionError.asReadonly();
+  readonly guardando = this._guardando.asReadonly();
+
+  limpiarAccionError(): void {
+    this._accionError.set(null);
+  }
 
   cargar(): void {
     this._isLoading.set(true);
@@ -43,9 +55,20 @@ export class PedidosStoreService {
   }
 
   crear(request: PedidoRequest): void {
+    if (this._guardando()) {
+      return;
+    }
+    this._guardando.set(true);
+    this._accionError.set(null);
     this.api.post<Pedido>('/pedidos', request).subscribe({
-      next: (nuevo) => this._pedidos.update((actuales) => [...actuales, nuevo]),
-      error: () => this._error.set('No se pudo crear el pedido.'),
+      next: (nuevo) => {
+        this._pedidos.update((actuales) => [...actuales, nuevo]);
+        this._guardando.set(false);
+      },
+      error: (err) => {
+        this._accionError.set(`No se pudo crear el pedido. ${this.errorHandler.handle(err)}.`);
+        this._guardando.set(false);
+      },
     });
   }
 
@@ -75,12 +98,20 @@ export class PedidosStoreService {
   }
 
   private cambiarEstado(id: number, estado: EstadoPedido): void {
+    if (this._guardando()) {
+      return;
+    }
+    this._guardando.set(true);
+    this._accionError.set(null);
     this.api.patch<Pedido>(`/pedidos/${id}/estado`, { estado }).subscribe({
-      next: (actualizado) =>
-        this._pedidos.update((actuales) =>
-          actuales.map((p) => (p.id === id ? actualizado : p)),
-        ),
-      error: () => this._error.set('No se pudo cambiar el estado del pedido.'),
+      next: (actualizado) => {
+        this._pedidos.update((actuales) => actuales.map((p) => (p.id === id ? actualizado : p)));
+        this._guardando.set(false);
+      },
+      error: (err) => {
+        this._accionError.set(`No se pudo cambiar el estado del pedido. ${this.errorHandler.handle(err)}.`);
+        this._guardando.set(false);
+      },
     });
   }
 }

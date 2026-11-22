@@ -23,3 +23,6 @@ Thumbs.db
 # Artefactos de herramientas locales
 .playwright-mcp/
 .omo/
+
+# Contexto local del asistente (no se versiona)
+CLAUDE.md
