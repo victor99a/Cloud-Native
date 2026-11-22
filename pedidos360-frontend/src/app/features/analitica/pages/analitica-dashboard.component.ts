@@ -3,6 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { AnaliticaStoreService } from '../services/analitica-store.service';
+import { estadoLabel } from '../../pedidos/models/pedido.model';
 
 @Component({
   selector: 'app-analitica-dashboard',
@@ -63,7 +64,7 @@ import { AnaliticaStoreService } from '../services/analitica-store.service';
           </div>
         } @else {
           <div class="table-wrap">
-            <table>
+            <table class="table-stack">
               <thead>
                 <tr>
                   <th>Estado</th>
@@ -75,10 +76,10 @@ import { AnaliticaStoreService } from '../services/analitica-store.service';
               <tbody>
                 @for (metrica of store.metricas(); track metrica.estado) {
                   <tr>
-                    <td>{{ metrica.estado }}</td>
-                    <td>{{ metrica.totalPedidos }}</td>
-                    <td>&#36;{{ metrica.totalVendido | number: '1.0-0' }}</td>
-                    <td>{{ metrica.ultimaActualizacion | date: 'short' }}</td>
+                    <td data-label="Estado">{{ etiquetaEstado(metrica.estado) }}</td>
+                    <td data-label="Pedidos">{{ metrica.totalPedidos }}</td>
+                    <td class="nowrap" data-label="Monto vendido">&#36;{{ metrica.totalVendido | number: '1.0-0' }}</td>
+                    <td class="nowrap" data-label="Última actualización">{{ metrica.ultimaActualizacion | date: 'dd-MM-yyyy HH:mm' }}</td>
                   </tr>
                 }
               </tbody>
@@ -172,7 +173,8 @@ import { AnaliticaStoreService } from '../services/analitica-store.service';
     }
 
     .live-btn {
-      padding: 6px 12px;
+      min-height: 40px;
+      padding: 6px 14px;
       font-size: 13px;
       font-weight: 500;
       color: var(--color-text);
@@ -231,6 +233,10 @@ export class AnaliticaDashboardComponent implements OnInit, OnDestroy {
       clearInterval(this.intervalo);
       this.intervalo = null;
     }
+  }
+
+  etiquetaEstado(estado: string): string {
+    return estadoLabel(estado);
   }
 
   totalPedidos = computed(() => this.store.metricas().reduce((suma, m) => suma + m.totalPedidos, 0));

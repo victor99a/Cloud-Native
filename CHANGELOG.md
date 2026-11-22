@@ -1,5 +1,19 @@
 # Changelog — Pedidos360
 
+## Sin publicar — Frontend: UX y diseño responsivo
+
+### Frontend
+- Móvil: las tablas de Pedidos, Productos y Analítica se apilan como tarjetas (≤ 640 px); antes la columna
+  Total y los botones de stock quedaban fuera de la pantalla.
+- Los botones para cambiar o cancelar un pedido solo se muestran a ADMIN y OPERADOR (misma regla del BFF);
+  el rol CLIENTE ve una nota en lugar de recibir un 403.
+- Cancelar un pedido pide confirmación.
+- Un error en una acción (crear, cambiar estado, ajustar stock) se muestra como aviso cerrable sin ocultar los
+  datos, con el motivo (`ErrorHandlerService`: 401/403/400…).
+- Botones bloqueados con spinner mientras hay una escritura en curso (evita doble envío).
+- Idioma `es-CL`: montos `$899.990` y fechas `dd-MM-yyyy`; estados con nombre legible ("En preparación").
+- Contraste WCAG AA en badges y mensajes de error; objetivos táctiles ≥ 40 px; favicon.
+
 ## v1.3.0 — 2026-11-19
 
 ### Documentación
